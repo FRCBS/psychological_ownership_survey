@@ -1,6 +1,6 @@
 ---
-title: "Summary of hemochromatosis questionnaire answers"
-author: "Elina Koskinen, Jonna Clancy and Mikko Arvas"
+title: "Summary of physchological questionnaire answers"
+author: "Abigail Edwards and Mikko Arvas"
 date: "`r Sys.time()`"
 output:
   html_document:
@@ -36,30 +36,144 @@ library(here)
 ## Import
 
 ```{r}
-file <- here("data/Tulokset - hemokromatoosikysely vastaukset (ID 133620).xlsx")
-data <- read_xlsx(file,n_max = 60)
-if (TRUE) { # But if this is fixed in xlsx you don't need to do this
-  summary(data)
-  data <- data %>% rename(
-    Kys2Gender = K2Gender
-  )
-}
-summary(data)
+# file <- here("data/Tulokset - xxxxx.xlsx")
+# data <- read_xlsx(file,n_max = XX)
+# summary(data)
 ```
+
+Items
+<table>
+<tr>
+<td></td>
+<td> Psychological ownership</td>
+ <tr>
+ <td>po01</td>
+ <td>
+  1.	I feel a very high degree of personal ownership of donating blood.
+  </td>
+  </tr>
+  <tr>
+  <td>po02</td>
+  <td>
+  2.	I feel like donating blood belongs to me.
+  </td> </tr>
+  <tr>
+  <td>po03</td> <td>
+  3.	I feel like I own donating blood.
+  </td> </tr>
+  <tr> <td></td>
+  <td>
+  Self-identity
+  </td> </tr>
+  <tr>
+  <td>si01</td>
+  <td>
+  1.	Donating blood is important to me.
+  </td> <tr>
+  <td>si02</td> <td>
+  2.	I am like the kind of person who donates blood.
+  </td> </tr>
+  <tr> <td>si03</td> 
+  <td>
+  3.	Donating blood is an important part of who I am.
+  </td> </tr>
+  <tr> <td></td>
+  <td>
+  Intention
+  </td></tr>
+  <tr><td>in01</td>
+  <td>
+  1.	I would like to donate blood in the future.
+  </td>   </tr>
+  <tr><td>in02</td>
+  <td>
+  2.	I intend to donate blood in the future.
+  </td> </tr>
+  <tr><td>in03</td>
+  <td>
+  3.	I intend to make more than just a one-off blood donation.
+  </td></tr>
+  <tr><td></td>
+  <td>
+  Intention to donate for emergency
+  </td></tr>
+  <tr><td>ie01</td>
+  <td>
+  1.	I would be willing to donate blood if I received an urgent callout from the Finnish Red Cross Blood Service.
+  </td></tr>
+  <tr><td></td> 
+  <td>
+  Antecedents of psychological ownership
+  </td></tr>
+  <tr><td></td> 
+  <td>
+  Control
+  </td></tr>
+  <tr><td>ac01</td>
+  <td>
+  1.	I have influence over the things that affect me while donating blood.
+  </td></tr>
+  <tr><td>ac02</td>
+  <td>
+  2.	I control the location and scheduling for donating blood.
+  </td></tr>
+  <tr><td>ac03</td>
+  <td>
+  3.	I influence decisions related to my blood donation.
+  </td></tr>
+  <tr><td>ac04</td>
+  <td>
+  4.	In general, I have control over donating blood.
+  </td></tr>
+  <tr><td></td>
+  <td>
+  Intimate knowledge
+  </td></tr>
+  <tr><td>ai02</td>
+  <td>
+  1.	I am intimately familiar with what is going on with regard to donating blood.
+  </td></tr>
+  2.	I have a depth of knowledge as it relates to donating blood.
+  3.	I have a comprehensive understanding of donating blood.
+  4.	I have a broad understanding of donating blood.
+  Blood donation history
+  1.	Do you believe that you are currently eligible to donate blood [yes, no, unsure]
+  2.	How many times in total have you donated blood at the Finnish Red Cross Blood Service Finland? [select number]
+  3.	How many times in the last two years have you donated at the Finnish Red Cross Blood Service? [select number]
+  4.	When did you last attend a Finnish Red Cross blood donation centre with the intention of donating blood? [select date]
+  Demographics
+  1.	What is your gender? [man, woman, non-binary, prefer to not disclose, prefer to self-describe (open response)]
+  2.	How old are you today? [select number]
+
+
+  </table>
+
+
+```{r}
+knitr::knit_exit()
+```
+
+
 
 
 ## Simulate
 
 ```{r}
 if (TRUE) { # if you have data you set this to false
+  n <- 1000
   source("../../responsesR/R/responses.R") 
+  
+ 
+  
+
+  data <- tibble(,rows=n)
   # you should be able to load the library instead of just sourcing it from cloned folder
   #hop this will be fixed soon
-  age <- round(rnorm(n=60,mean=40,sd =10))
-  data_likert_4<- genLikert(size = 60,items = 1, levels=4, location=c(-1))
-  data_likert_5<- genLikert(size = 60,items = 3, levels=5, location=c(-1,-1),correlation = 0.5)
-  data_likert_11<- genLikert(size = 60,items = 1, levels=11, location=c(1))
-  ferritin <- rlnorm(n=60,meanlog = 3,sdlog = 1)
+  age <- round(rnorm(n=n,mean=40,sd =10))
+  data_likert_4<- genLikert(size =  n ,items = 1, levels=4, location=c(-1))
+  data_likert_5<- genLikert(size =  n ,items = 3, levels=5, location=c(-1,-1),correlation = 0.5)
+  data_likert_11<- genLikert(size =  n ,items = 1, levels=11, location=c(1))
+  ferritin <- rlnorm(n= n ,meanlog = 3,sdlog = 1)
   data <- data %>% mutate(
     Kys1Age   = age ,    
     Kys2Gender       = case_when(
@@ -82,7 +196,7 @@ if (TRUE) { # if you have data you set this to false
       data_likert_11$X == 11 ~ "Over 100"
       
     ),
-    Kys4YearStarted   = 2024 - age - round(rnorm(n=60,mean = 10, sd = 5 )),
+    Kys4YearStarted   = 2024 - age - round(rnorm(n= n ,mean = 10, sd = 5 )),
     Kys5         =   data_likert_5$X1,
     Kys6         = data_likert_5$X2,
     Kys20aLabResults  = ferritin,
