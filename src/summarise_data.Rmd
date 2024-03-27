@@ -23,6 +23,7 @@ library(gtsummary)
 library(likert)
 library(readxl)
 library(here)
+library(corrplot)
 #https://github.com/markolalovic/responsesR
 #install.packages("devtools")
 #library(devtools)
@@ -194,52 +195,90 @@ knitr::knit_exit()
 All items are scored 1 (strongly disagree) to 7 (strongly agree).
 
 ```{r}
-if (TRUE) { # if you have data you set this to false
+#if (TRUE) { # if you have data you set this to false
   n <- 20
   source("../../responsesR/R/responses.R")
-
-         
-  
-         
-  data <- tibble(,rows=n)
-  # you should be able to load the library instead of just sourcing it from cloned folder
-  #hop this will be fixed soon
-  age <- round(rnorm(n=n,mean=40,sd =10))
-  #po <- genLikert(size =  n ,items = 3, levels=7, location=c(1,1,1),correlation = 0.5)
-  #si <- genLikert(size =  n ,items = 3, levels=7, location=c(1,1,1),correlation = 0.5)
-  #in <- genLikert(size =  n ,items = 3, levels=7, location=c(1,1,1),correlation = 0.5)
-
-    data_likert_5<- genLikert(size =  n ,items = 3, levels=5, location=c(-1,-1),correlation = 0.5)
-  data_likert_11<- genLikert(size =  n ,items = 1, levels=11, location=c(1))
-  ferritin <- rlnorm(n= n ,meanlog = 3,sdlog = 1)
-  data <- data %>% mutate(
-    Kys1Age   = age ,    
-    Kys2Gender       = case_when(
-      data_likert_4$X == 1 ~ "Women",
-      data_likert_4$X == 2 ~ "Men",
-      data_likert_4$X == 3 ~ "Non-binary/other",
-      data_likert_4$X == 4 ~ "Don't wish to respond"),
-      
-    Kys3DonationCount =  case_when(
-      data_likert_11$X ==    1 ~ "None",
-      data_likert_11$X ==  2 ~"1-10",
-      data_likert_11$X ==3 ~ "11-20",
-      data_likert_11$X ==4 ~ "21-30",
-      data_likert_11$X ==5 ~ "31-40",
-      data_likert_11$X ==6 ~ "51-60",
-      data_likert_11$X ==7 ~ "61-70",
-      data_likert_11$X ==8 ~ "71-80",
-      data_likert_11$X ==9 ~ "81-90",
-      data_likert_11$X ==10 ~ "91-100",
-      data_likert_11$X == 11 ~ "Over 100"
-      
-    ),
-    Kys4YearStarted   = 2024 - age - round(rnorm(n= n ,mean = 10, sd = 5 )),
-    Kys5         =   data_likert_5$X1,
-    Kys6         = data_likert_5$X2,
-    Kys20aLabResults  = ferritin,
-    Kys21  =   data_likert_5$X3,
+  #create correlation matrix
+  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
+  qabbr <- c(
+    str_c("po0",1:3),
+    str_c("si0",1:3),
+    str_c("it0",1:3),
+    str_c("ie0",1),
+    str_c("ac0",1:4),
+    str_c("ai0",1:4),
+    str_c("bd0",1:4),
+    str_c("de0",1:2)
   )
+  #use tidyverse str function to create names str_glue
+  R <- matrix(
+  #     po          si        it        ie         ac        ai              
+  c( 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 
+    # bd and de are different
+    )
+  , nrow=18)
+    # if you have problems name the columns and rows here
+  rownames(R) <- qabbr[1:18]
+  colnames(R) <- qabbr[1:18]
+  corrplot(R)
+#}
+```
+
+
+```{r}
+if (TRUE) {
+
+  data_likert_7<- genLikert(
+    size =  n ,
+    items = nrow(R), 
+    levels=7, 
+    location=rep(1,nrow(R)),
+    correlation = R)
+  colnames(data_likert_7) <- qabbr[1:18]
+  de02 <- round(rnorm(n=n,mean=40,sd =10)) # age
+  de01<- genLikert(size = n,items = 1, levels=4, location=c(-1)) #gender
+  de01 <-     
+      case_when(
+      de01$X == 1 ~ "women",
+      de01$X == 2 ~ "man",
+      de01$X == 3 ~ "Non-binary/other",
+      de01$X == 4 ~ "Don't wish to respond")
+  bd01 <-  genLikert(size = n,items = 1, levels=3, location=c(-1))
+  bd01 <- case_when(
+    bd01$X == 1 ~ "yes",
+    bd01$X == 2 ~ "no",
+    bd01$X == 3 ~ "unsure",
+  )
+  bd02 <- round(rlnorm(n=n,mean=2,sd =1)) # count of donations
+  bd03 <- round(rnorm(n=n,mean=2,sd =1)) # this should be correlated with gender
+  bd04 <- sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n)
+  data <- bind_cols(
+    data_likert_7,
+    bd01,
+    bd02,
+    bd03,
+    bd04,
+    de01,
+    de02
+  )
+  colnames(data) <- qabbr
   
   summary(data)
 }
@@ -247,101 +286,5 @@ if (TRUE) { # if you have data you set this to false
 
 ## Process
 
-```{r}
-
-data <-  data %>% 
-  mutate(
-    Kys2Gender = factor(Kys2Gender),
-    Kys3DonationCount = factor(Kys3DonationCount,ordered = TRUE),
-    Kys5 = factor(
-      Kys5,
-      ordered = TRUE,
-      levels = 1:5,
-      labels =  c("Totally agree","Agree","Neutral","Disagree","Totally disagree")
-    ),
-    Kys6 = factor(
-      Kys6,
-      ordered = TRUE,
-      levels = 1:5,
-      labels = c("Totally agree","Agree","Neutral","Disagree","Totally disagree")
-    ),
-    Kys21 = factor(Kys5,ordered = TRUE)
-  )
-summary(data)
-```
 
 
-
-# Demographics
-
-## Age by Gender
-
-```{r}
-
-p <- ggplot(data)
-p <- p +  geom_histogram(aes(x=Kys1Age),binwidth = 5)
-p <- p + facet_wrap(. ~ Kys2Gender)
-p <- p + xlab("Age in years")
-p
-
-```
-
-
-## Demographics Table 1
-
-```{r}
-
-table1 <-
-  tbl_summary(
-    data %>% rename(
-      Age =  Kys1Age,
-      YearStarted = Kys4YearStarted,
-      DonationCount = Kys3DonationCount
-    ),
-    include = c(
-      Age,
-      YearStarted,  
-      DonationCount
-      ),
-    by =  Kys2Gender
-    
-  ) %>%
-  add_n()  # add column with total number of non-missing observations
-table1
-```
-
-
-
-
-# Distributions of Likert scale questions
-
-
-```{r , warning=FALSE}
-items = data %>% 
-    select(Kys5,Kys6) 
-
-colnames(items) <- c("It was useful to receive genetic information","Receiving genetic information did not make me worry")
-
-nlevels = 5
-```
-
-
-```{r , warning=FALSE}
-q01 <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
-)
-plot(q01, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
-```
-
-add all the questions here
-
-
-# Distributions of lab values
-
-add here like age
