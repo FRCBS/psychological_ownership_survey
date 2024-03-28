@@ -24,11 +24,7 @@ library(likert)
 library(readxl)
 library(here)
 library(corrplot)
-#https://github.com/markolalovic/responsesR
-#install.packages("devtools")
-#library(devtools)
-# install_github("markolalovic/responsesR")
-#library(responsesR)
+library(responsesR)
 ```
 
 
@@ -184,23 +180,13 @@ Demographics
 
 
 ```{r}
-knitr::knit_exit()
+#knitr::knit_exit()
 ```
 
 
-
-
-## Simulate
-
-All items are scored 1 (strongly disagree) to 7 (strongly agree).
-
 ```{r}
-#if (TRUE) { # if you have data you set this to false
-  n <- 20
-  source("../../responsesR/R/responses.R")
-  #create correlation matrix
-  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
-  qabbr <- c(
+#Make question abbreviations
+qabbr <- c(
     str_c("po0",1:3),
     str_c("si0",1:3),
     str_c("it0",1:3),
@@ -210,6 +196,21 @@ All items are scored 1 (strongly disagree) to 7 (strongly agree).
     str_c("bd0",1:4),
     str_c("de0",1:2)
   )
+
+```
+
+
+## Simulate
+
+All items are scored 1 (strongly disagree) to 7 (strongly agree).
+
+```{r}
+
+#if (TRUE) { # if you have data you set this to false
+  n <- 100
+  #source("../../responsesR/R/responses.R")
+  #create correlation matrix
+  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
   #use tidyverse str function to create names str_glue
   R <- matrix(
   #     po          si        it        ie         ac        ai              
@@ -245,29 +246,52 @@ All items are scored 1 (strongly disagree) to 7 (strongly agree).
 ```{r}
 if (TRUE) {
 
-  data_likert_7<- genLikert(
-    size =  n ,
-    items = nrow(R), 
-    levels=7, 
-    location=rep(1,nrow(R)),
-    correlation = R)
-  colnames(data_likert_7) <- qabbr[1:18]
+  # data_likert_7<- genLikert(
+  #   size =  n ,
+  #   items = nrow(R), 
+  #   levels=7, 
+  #   location=rep(1,nrow(R)),
+  #   correlation = R)
+  # colnames(data_likert_7) <- qabbr[1:18]
+  data_likert_7<- get_responses(n = n,
+                K = 7,
+                mu = rep(1,nrow(R)),
+                gamma1 = -0.1,
+                sd = 1,
+                R=R
+  )
+  
   de02 <- round(rnorm(n=n,mean=40,sd =10)) # age
-  de01<- genLikert(size = n,items = 1, levels=4, location=c(-1)) #gender
+  #de01<- genLikert(size = n,items = 1, levels=4, location=c(-1)) #gender
+  de01 <- get_responses(n = n,
+                K = 4,
+                mu = -1,
+                gamma1 = -0.1,
+                sd = 0.5
+  )
   de01 <-     
       case_when(
-      de01$X == 1 ~ "women",
-      de01$X == 2 ~ "man",
-      de01$X == 3 ~ "Non-binary/other",
-      de01$X == 4 ~ "Don't wish to respond")
-  bd01 <-  genLikert(size = n,items = 1, levels=3, location=c(-1))
+      de01 == 1 ~ "women",
+      de01 == 2 ~ "man",
+      de01 == 3 ~ "Non-binary/other",
+      de01 == 4 ~ "Don't wish to respond")
+  #bd01 <-  genLikert(size = n,items = 1, levels=3, location=c(-1))
+  bd01 <- get_responses(n = n,
+                        K = 3,
+                        mu = -1,
+                        gamma1 = 0.5,
+                        sd = 0.7
+  )
   bd01 <- case_when(
-    bd01$X == 1 ~ "yes",
-    bd01$X == 2 ~ "no",
-    bd01$X == 3 ~ "unsure",
+    bd01 == 1 ~ "yes",
+    bd01 == 2 ~ "no",
+    bd01 == 3 ~ "unsure",
   )
   bd02 <- round(rlnorm(n=n,mean=2,sd =1)) # count of donations
-  bd03 <- round(rnorm(n=n,mean=2,sd =1)) # this should be correlated with gender
+  #this should be correlated with gender, but it is not
+  bd03 <- ceiling(rnorm(n=n,mean=2,sd =0.6)) # count of donations in last 2 years
+  bd03 <- abs(bd03) # make sure there are only positive numbers
+  #this should be correlated with gender, but it is not
   bd04 <- sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n)
   data <- bind_cols(
     data_likert_7,
@@ -285,6 +309,216 @@ if (TRUE) {
 ```
 
 ## Process
+
+```{r}
+
+f1 <- function (x){
+  #as numbers but labelled with words
+    x <- factor(
+    x,
+    #levels = c("Strongly disagree","Disagree","Neutral","Agree","Strongly agree"),
+    levels = c(1:7),
+    ordered = TRUE
+  )
+  x
+}
+
+data <- data %>% 
+  mutate_at(
+    vars(
+      qabbr[1:18]),
+    ~ f1(.) 
+    ) %>% 
+  mutate(bd04 = as.Date(bd04),
+         bd01 = factor(bd01),
+         de01 = factor(de01)
+         )  
+
+summary(data)
+
+```
+
+
+
+# Plot
+
+the responsesR likert plots look really good...
+
+
+## Demographics Table 1
+
+```{r}
+
+table1 <-
+  tbl_summary(
+    data %>% 
+      # mutate(
+      #   bd01 = as.character(bd01) # this did fix this need to think of something
+      # ) %>% 
+      rename(
+      Gender =  de01,
+      Age = de02,
+      DonationEligibility = bd01,
+      DonationCount = bd02,
+      DonationCountLast2years = bd03,
+    ),
+    include = c(
+      Age,
+      DonationEligibility,
+      DonationCount,
+      DonationCountLast2years
+      ),
+    by =  Gender
+    
+  ) %>%
+  add_n()  # add column with total number of non-missing observations
+table1
+```
+
+
+
+## Age by Gender
+
+```{r}
+
+p <- ggplot(data)
+p <- p +  geom_histogram(aes(x=de02),binwidth = 5)
+p <- p + facet_wrap(. ~ de01)
+p <- p + xlab("Age in years")
+p
+
+```
+
+
+
+## Psychological ownership
+
+```{r , warning=FALSE}
+nlevels = 7
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^po"))) 
+
+#rename the questions in here from metadata
+
+qpo <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qpo, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
+
+
+## Self-identity
+
+
+```{r , warning=FALSE}
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^si"))) 
+
+#rename the questions in here from metadata
+qsi <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qsi, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
+
+
+## Intention
+
+```{r , warning=FALSE}
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^it"))) 
+
+#rename the questions in here from metadata
+qit <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qit, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
+
+
+## Intention to donate for emergency
+
+```{r , warning=FALSE}
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^ie"))) 
+
+#rename the questions in here from metadata
+qie <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qie, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
+
+
+## Antecedents of psychological ownership - Control
+
+```{r , warning=FALSE}
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^ac"))) 
+
+#rename the questions in here from metadata
+qac <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qac, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
+
+
+## Antecedents of psychological ownership - Intimate knowledge
+
+
+```{r , warning=FALSE}
+
+items = data %>% 
+    select(which(str_detect(colnames(data) ,"^ai"))) 
+
+#rename the questions in here from metadata
+qai <- likert(
+  items = as.data.frame(items),
+  nlevels = nlevels
+  
+)
+plot(qai, 
+     type = "heat",
+     legend.position = "bottom",
+     text.size=3,
+     include.histogram = FALSE)
+```
 
 
 
