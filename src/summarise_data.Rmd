@@ -330,7 +330,7 @@ data <- data %>%
     ~ f1(.) 
     ) %>% 
   mutate(bd04 = as.Date(bd04),
-         bd01 = factor(bd01),
+         bd01 = factor(bd01, levels = c("no","unsure","yes"),ordered = TRUE),
          de01 = factor(de01)
          )  
 
@@ -521,4 +521,100 @@ plot(qai,
 ```
 
 
+# Model
+
+
+```{r}
+
+library(lavaan)
+#library(blavaan)
+library(tidySEM)
+
+```
+
+
+## Confirmatory factor analysis
+
+```{r}
+isordered <- data %>%  summarise(across(everything(), ~ is.ordered(.x))) %>%  as.logical() %>% which()
+isfactor <- data %>%  summarise(across(everything(), ~ is.factor(.x))) %>%  as.logical() %>% which()
+
+#lavaan does not understand empty factor levels
+data.fit <- data %>%
+  #lavaan cannot deal with unordered factor with more then 2 levels
+  filter(de01 == 'man' | de01 == "women") %>% 
+  mutate(
+    across(isfactor, ~ fct_drop(.x)
+    ) 
+  )
+
+```
+
+
+
+
+```{r}
+
+po01.model <- ' po =~ po01 + po02 + po03
+                si =~ si01 + si02 + si03
+                it =~ it01 + it02 + it03
+                ac =~ ac01 + ac02 + ac03 + ac04
+                ai =~ ai01 + ai02 + ai03 + ai04 
+#                bd =~ bd01 + bd02 + bd03 + bd04 #lavaan ERROR: unknown ov.types:Da
+                bd =~ bd01 + bd02 + bd03
+'
+                
+fit.po01.cfa <- cfa(po01.model,  
+                    estimator = "DWLS",
+                    data = data.fit)
+
+summary(fit.po01.cfa,standardized = TRUE)
+```
+
+## SEM
+
+
+```{r}
+#https://stats.stackexchange.com/questions/340857/serial-mediation-in-r-how-to-setup-the-model
+
+po02.model <- ' 
+#measurement model
+psycown =~ po01 + po02 + po03
+selfid =~ si01 + si02 + si03
+intention =~ it01 + it02 + it03
+#psycown_cont =~ ac01 + ac02 + ac03 + ac04
+#psycown_know =~ ai01 + ai02 + ai03 + ai04 
+blooddonor =~ bd01 + bd02 + bd03 
+#mediation
+psycown ~ a1 *  blooddonor
+selfid ~ a2 * blooddonor + d21 * psycown
+#regression
+intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
+ind_eff := a1* d21 * b2
+'
+
+
+
+```
+
+
+```{r}
+#fit
+                
+fit.po02 <- cfa(po02.model,  
+                    estimator = "DWLS",
+                    data = data.fit)
+
+summary(fit.po02,standardized = TRUE)
+
+```
+
+
+
+```{r}
+
+#bootstrapLavaan()
+
+
+```
 
