@@ -1,5 +1,5 @@
 ---
-title: "Summary of physchological questionnaire answers"
+title: "Summary of psychological ownership survey answers"
 author: "Abigail Edwards and Mikko Arvas"
 date: "`r Sys.time()`"
 output:
