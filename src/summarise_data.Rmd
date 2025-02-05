@@ -3,8 +3,10 @@ title: "Summary of psychological ownership survey answers"
 author: "Abigail Edwards and Mikko Arvas"
 date: "`r Sys.time()`"
 output:
+  pdf_document:
+    toc: yes
   html_document:
-    toc: true
+    toc: yes
     theme: united
 ---
 
@@ -24,7 +26,20 @@ library(likert)
 library(readxl)
 library(here)
 library(corrplot)
+library(ggstats)
 library(responsesR)
+
+# https://github.com/cjvanlissa/worcs
+# https://cjvanlissa.github.io/worcs/articles/setup.html
+# worcs::check_worcs_installation() 
+
+#install.packages("tinytex", dependencies = TRUE)
+#library("tinytex")
+#install_tinytex()
+
+
+# https://cjvanlissa.github.io/worcs/reference/add_preregistration.html which template ? 
+# https://github.com/crsh/prereg
 ```
 
 
@@ -244,6 +259,7 @@ All items are scored 1 (strongly disagree) to 7 (strongly agree).
 
 
 ```{r}
+#simulate data with responsesR::get_responses
 if (TRUE) {
 
   # data_likert_7<- genLikert(
@@ -307,6 +323,15 @@ if (TRUE) {
   summary(data)
 }
 ```
+
+
+```{r}
+# https://stats.stackexchange.com/questions/648242/how-to-simulate-data-for-a-sem-model-with-moderation-effect-using-r 
+# https://github.com/RobinDenz1/simDAG
+# 
+
+```
+
 
 ## Process
 
@@ -412,6 +437,17 @@ plot(qpo,
      text.size=3,
      include.histogram = FALSE)
 ```
+
+```{r}
+
+gglikert(
+  data %>% 
+    select(which(str_detect(colnames(data) ,"^po"))) 
+)
+
+```
+
+
 
 
 ## Self-identity
@@ -527,8 +563,8 @@ plot(qai,
 ```{r}
 
 library(lavaan)
-#library(blavaan)
-library(tidySEM)
+#library(blavaan) # tidySEM requires blavaan
+#library(tidySEM) # https://github.com/yrosseel/lavaan/issues/359
 
 ```
 
@@ -568,7 +604,8 @@ fit.po01.cfa <- cfa(po01.model,
                     estimator = "DWLS",
                     data = data.fit)
 
-summary(fit.po01.cfa,standardized = TRUE)
+lavaan::summary(fit.po01.cfa,standardized = TRUE) # tidySEM is loaded this fails!
+#lavaan::summary(fit.po01.cfa,std.nox = FALSE)
 ```
 
 ## SEM
@@ -605,16 +642,15 @@ fit.po02 <- cfa(po02.model,
                     estimator = "DWLS",
                     data = data.fit)
 
-summary(fit.po02,standardized = TRUE)
+lavaan::summary(fit.po02,standardized = TRUE)
 
 ```
 
 
 
 ```{r}
-
-#bootstrapLavaan()
-
-
+#fit.po02.boot <- bootstrapLavaan(fit.po02)
+#Error: lavaan->bootstrapLavaan(): 
+#this function is not (yet) available if conditional.x = TRUE
 ```
 
