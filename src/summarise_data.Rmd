@@ -3,11 +3,11 @@ title: "Summary of psychological ownership survey answers"
 author: "Abigail Edwards and Mikko Arvas"
 date: "`r Sys.time()`"
 output:
-  pdf_document:
-    toc: yes
   html_document:
     toc: yes
     theme: united
+  pdf_document:
+    toc: yes
 ---
 
 
@@ -27,6 +27,9 @@ library(readxl)
 library(here)
 library(corrplot)
 library(ggstats)
+library(lavaan)
+library(lavaanPlot)
+library(blavaan)
 
 # https://github.com/cjvanlissa/worcs
 # https://cjvanlissa.github.io/worcs/articles/setup.html
@@ -304,7 +307,7 @@ if (FALSE) { # if you have data you set this to false
   R[upper.tri(R)] <- t(R)[upper.tri(R)]
   #isSymmetric(R)
   
-  R <- R *0.5
+  #R <- R *0.5
   R <- as.matrix(Matrix::nearPD(R)$mat)
   diag(R) <- 1
   #  Rplot <- round(R,digits = 1)
@@ -370,13 +373,14 @@ library(responsesR)
   data <- bind_cols(
     data_likert_7,
     bd01,
-    #bd02,
-    #bd03,
-    #bd04,
+    bd02 = NA,
+    bd03 = NA,
+    bd04 = NA,
     de01,
     de02
   )
-  colnames(data) <- qabbr[1:ncol(data)]
+  #colnames(data) <- qabbr[1:ncol(data)]
+  colnames(data) <- qabbr
   data <- data %>% 
     mutate(
       # to have some relationship between latent variables make donation counts and po correlate
@@ -402,60 +406,6 @@ library(responsesR)
 }
 ```
 
-
-
-```{r}
-# https://stats.stackexchange.com/questions/648242/how-to-simulate-data-for-a-sem-model-with-moderation-effect-using-r 
-# https://github.com/RobinDenz1/simDAG
-# 
-if (FALSE) {
-  library(simDAG)
-
-  
-  # dag <- empty_dag() +
-  #   node("age", type="rnorm", mean=50, sd=4) +
-  #   node("sex", type="rbernoulli", p=0.5) +
-  #   node("bmi", type="gaussian", formula= ~ 12 + age*1.1 + sex*0.4, error=2) +
-  #   node("death", type="binomial", formula= ~ -15 + age*0.1 + bmi*0.3)
-  # set.seed(42)
-  # sim_dat <- sim_from_dag(dag, n_sim=100000)
-  # mod_bmi <- glm(bmi ~ age + sex, data=sim_dat, family="gaussian")
-  # summary(mod_bmi)
-  # 
-#   po =~ po01 + po02 + po03
-#                 si =~ si01 + si02 + si03
-#                 it =~ it01 + it02 + it03
-#                 ac =~ ac01 + ac02 + ac03 + ac04
-#                 ai =~ ai01 + ai02 + ai03 + ai04 
-# #                bd =~ bd01 + bd02 + bd03 + bd04 #lavaan ERROR: unknown ov.types:Da
-#                 bd =~ bd01 + bd02 + bd03
-  
-# probs1 <- c(0.05,0.1,0.2,0.3,0.2,0.1,0.05)
-#                 
-# dag <- empty_dag() + 
-#   node("po01", type="rcategorical", labels=c(1:7),probs= )+ 
-#   po02 + 
-#   po03 +
-#   si01 + 
-#   si02 + 
-#   si03 + 
-#   it01 + 
-#   it02 + 
-#   it03 + 
-#   ac01 + 
-#   ac02 + 
-#   ac03 + 
-#   ac04 + 
-#   ai01 + 
-#   ai02 + 
-#   ai03 + 
-#   ai04 + 
-#   bd01 + 
-#   bd02 + 
-#   bd03 + 
-}
-
-```
 
 
 ## Process
@@ -485,11 +435,6 @@ data <- data %>%
          )  
 
 summary(data)
-
-```
-
-```{r}
-corrplot(cor(data %>% select(-bd01,-bd04,-de01)))
 
 ```
 
@@ -693,7 +638,7 @@ plot(qai,
 
 library(lavaan)
 #library(blavaan) # tidySEM requires blavaan
-#library(tidySEM) # https://github.com/yrosseel/lavaan/issues/359
+#library(tidySEM) # https://github.com/yrosseel/lavaan/issues/359 lavaan does not work if tidySEM is loaded.
 
 ```
 
@@ -710,7 +655,10 @@ data.fit <- data %>%
   filter(de01 == 'man' | de01 == "women") %>% 
   mutate(
     across(isfactor, ~ fct_drop(.x)
-    ) 
+    ) %>% 
+      mutate(
+        bd04 = as.numeric(bd04) # lavaan cannot handle dates
+      )
   )
 
 ```
@@ -719,29 +667,92 @@ data.fit <- data %>%
 
 
 ```{r}
-
 po01.model <- ' po =~ po01 + po02 + po03
                 si =~ si01 + si02 + si03
                 it =~ it01 + it02 + it03
                 ac =~ ac01 + ac02 + ac03 + ac04
                 ai =~ ai01 + ai02 + ai03 + ai04 
-#                bd =~ bd01 + bd02 + bd03 + bd04 #lavaan ERROR: unknown ov.types:Da
-                bd =~ bd01 + bd02 + bd03
+                #bd =~ bd01 + bd02 + bd03 + bd04
+                bd =~ bd02 + bd01 + bd03 + bd04 #bd02 is sure correlate positively
+
 '
                 
 fit.po01.cfa <- cfa(po01.model,  
                     estimator = "DWLS",
                     data = data.fit)
-
-lavaan::summary(fit.po01.cfa,standardized = TRUE) # tidySEM is loaded this fails!
-#lavaan::summary(fit.po01.cfa,std.nox = FALSE)
+fit.po01.cfa
+# Minimum function test statistic is chi^2
 ```
-
-## SEM
 
 
 ```{r}
+lavaan::summary(fit.po01.cfa,standardized = TRUE) # tidySEM is loaded this fails!
+#lavaan::summary(fit.po01.cfa) # tidySEM is loaded this fails!
+
+#The estimate is the non-standardised as can be seen from the fact that
+#the first item is always 1. Then the standardised are in the "Std" columns.
+#"Std.all" is "factor loading" and crude rule if thumb is that abs(Std.all) should be above 0.3
+#With simulated data bd04 is just random so it should be smaller than others.
+```
+
+```{r}
+#lavaan::parameterestimates(fit.po02)
+# Check items which correlate poorly with their latent factor
+cfastd <- lavaan::standardizedsolution(fit.po02)
+cfastd %>% 
+  filter(abs(est.std) < 0.3) %>% 
+  select(-label,-z,-se) %>% 
+  arrange(abs(est.std)) %>% 
+  # Just the loadings
+  filter(op == '=~')
+
+```
+
+
+```{r}
+lavaan::fitmeasures(fit.po02,c("npar","chisq","df","cfi","rmsea","srmr"))
+```
+
+
+```{r}
+lavaanPlot(
+  fit.po01.cfa,
+   edge_options = list(color = "grey"),
+  coefs = TRUE,
+  graph_options = list(rankdir = "LR")
+           )
+```
+
+
+```{r}
+#Make a model with out prespesified correlation structure
+fit.po01.cfa.o <- cfa(po01.model,data.fit,orthogonal=TRUE)
+round(
+  sapply(list(cfa=fit.po01.cfa,cfa.o=fit.po01.cfa.o),
+         function(x) fitmeasures(x,c("npar","chisq","df","cfi","rmsea","srmr"))
+         )
+,3)
+
+#cfa should be better than cfa.o in all measures. cfi should be bigger, chi and srmr smaller in model cfa
+```
+
+```{r}
+#anova(fit.po01.cfa,fit.po01.cfa.o)
+#Error: lavaan->lavTestLRT(): 
+#some models (but not all) have scaled test statistics
+```
+
+
+
+## SEM
+
+### Basic SEM
+
+```{r}
 #https://stats.stackexchange.com/questions/340857/serial-mediation-in-r-how-to-setup-the-model
+
+# N.B. you need to check that first item is positively correlated with your latent factor
+# Otherwise you get opposite direction 
 
 po02.model <- ' 
 #measurement model
@@ -750,7 +761,7 @@ selfid =~ si01 + si02 + si03
 intention =~ it01 + it02 + it03
 #psycown_cont =~ ac01 + ac02 + ac03 + ac04
 #psycown_know =~ ai01 + ai02 + ai03 + ai04 
-blooddonor =~ bd01 + bd02 + bd03 
+blooddonor =~ bd02 + bd01 + bd03 +bd04 # do we want to include the DATE OF LAST DONATION?
 #mediation
 psycown ~ a1 *  blooddonor
 selfid ~ a2 * blooddonor + d21 * psycown
@@ -759,7 +770,7 @@ intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
 ind_eff := a1* d21 * b2
 '
 
-
+cat(po02.model)
 
 ```
 
@@ -767,12 +778,95 @@ ind_eff := a1* d21 * b2
 ```{r}
 #fit
                 
-fit.po02 <- cfa(po02.model,  
+fit.po02 <- sem(po02.model,  
                     estimator = "DWLS",
-                    data = data.fit)
+                    data = data.fit
+                #SHOULD SOME OTHER PARAMETERS BE SET?
+                  )
+
+# Warning: lavaan->lav_data_full():  
+#    exogenous variable(s) declared as ordered in data: "ie01"
+# Warning: lavaan->lav_data_full():  
+#    some observed variances are (at least) a factor 1000 times larger than others; use varTable(fit) to investigate
+#SHOULD SOMETHING BE DONE ABOUT THIS?
 
 lavaan::summary(fit.po02,standardized = TRUE)
 
+```
+
+```{r}
+varTable(fit.po02)
+```
+
+IS ie01 a problem? should it be numeric?
+IS bd04 a problem? should we reduce its variation by scaling it down?
+
+
+
+```{r}
+#inspect(fit,what="")
+lavaan::inspect(fit.po02,"r2")
+```
+
+
+
+```{r}
+lavaan::standardizedsolution(fit.po02) %>% select(-label)
+```
+
+```{r}
+lavaan::standardizedsolution(fit.po02) %>% select(-label,se,z) %>%  filter(op == '~')
+```
+
+
+
+```{r}
+
+labelsforplotting <- c(
+  "psycown" = "Psychological ownership",
+  "selfid"  = "Self-identity",
+  "intention" = "Intention",
+  "blooddonor " = "Blood donation history"
+)
+
+lavaanPlot(
+  model=fit.po02,  
+  coefs = TRUE,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  labels = labelsforplotting,
+
+  #In simulated data there should be correlations inside
+  # bloodonor, psycown, selfid
+  # and between
+  # bloodonor, psycown
+  # and nothing else
+  sig = 0.001
+  # if sig is < 0.001 one gets significant correlations
+  # also from simulated data elsewhere suggesting that 0.05 is not enough
+  # BAYESIN AND/OR BOOTSTRAP SHOULD BE MADE TO WORK
+  )
+```
+
+```{r}
+# Same with standardised coefficients
+lavaanPlot(
+  model = fit.po02, 
+   labels = labelsforplotting,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  coefs = TRUE, 
+  stand = TRUE,
+  sig=0.001
+  )
+```
+
+
+```{r}
+
+lavaan::lavInspect()
+#lavOptions
+#?"lavaan-class"
 ```
 
 
@@ -781,5 +875,212 @@ lavaan::summary(fit.po02,standardized = TRUE)
 #fit.po02.boot <- bootstrapLavaan(fit.po02)
 #Error: lavaan->bootstrapLavaan(): 
 #this function is not (yet) available if conditional.x = TRUE
+```
+
+
+
+
+
+
+### SEM with bootstrapping
+
+```{r}
+
+# To make bootstrapping run there cannot be any unordered factors
+data.fit2 <- data.fit %>% 
+  mutate(
+    de01 = as.ordered(de01)
+  ) %>% # and neither any factors at all
+mutate(
+  across(everything(),as.numeric)
+)  
+#fit
+                
+fit.po03 <- sem(po02.model,  
+                    estimator = "DWLS", # as we have factors we do not need to use DWLS. IS something else better?
+                    data = data.fit2,
+                #fixed.x=FALSE #  fixed.x = FALSE is not supported when conditional.x = TRUE
+                conditional.x = FALSE # THIS DOES NOT WORK, HOW TO FIX?
+                )
+
+lavaan::summary(fit.po03,standardized = TRUE)
+
+```
+
+
+
+```{r}
+lavaanPlot(
+  model = fit.po03, 
+   labels = labelsforplotting,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  coefs = TRUE, 
+  stand = TRUE,
+  sig=0.001
+  )
+
+
+```
+
+
+
+```{r}
+# As the fit.po03 with conditional.x TRUE does not the bootstrapping does not work either
+# Warning: lavaan->bootstrapLavaan():  
+#   1000 bootstrap runs failed or did not converge.
+fit.po03.boot <- bootstrapLavaan(
+  fit.po03,
+  FUN = "coef",
+  parallel = "multicore",
+  iseed = 74
+  )
+#Error: lavaan->bootstrapLavaan(): 
+#this function is not (yet) available if conditional.x = TRUE
+
+summary(fit.po03.boot)
+```
+
+THIS WORKS BUT HOW COUNT ci FROM THEM THEM?
+
+Compare bootstrapped to original
+
+```{r}
+
+x <- fit.po03.boot[,1]
+bootout <-list(t0 =  x,t = length(x))
+
+boot::boot.ci(bootout)
+
+```
+
+```{r}
+# https://cran.r-project.org/web/packages/semhelpinghands/vignettes/standardizedSolution_boot_ci.html
+#another option
+
+#https://blogonresearch.github.io/posts/bootstrap_confidence_intervals_for_standardized_solution_in_lavaan/
+```
+
+
+
+```{r}
+# Would manymome work better?
+#https://sfcheung.github.io/manymome/articles/manymome.html
+#https://sfcheung.github.io/manymome/index.html 
+boot_out_lavaan <- do_boot(fit = fit_lavaan,
+                           R = 500,
+                           ncores = 1,
+                           seed = 58491)
+
+
+
+```
+
+
+
+### BAYESIN SEM
+
+
+
+
+```{r}
+#fit
+                
+fit.po04 <- blavaan(po02.model,  
+                    #estimator = "DWLS",
+                    data = data.fit2,
+                #SHOULD SOME OTHER PARAMETERS BE SET?
+                n.chains = 4,
+                sample = 100,
+                mcmcfile =  here("results/fit.po04.rdata")
+                  )
+
+
+summary(fit.po04,standardized = TRUE)
+
+```
+
+
+
+
+
+
+
+## Improvements for SEM 
+
+### How do the residuals look ?
+
+```{r}
+#plot correlations from SEm
+lavaan::inspect(fit.po02,"est")$gamma
+
+```
+
+```{r}
+#lavaan::inspect(fit.po02,"sampstat")$res.cov
+```
+
+```{r}
+#residual correlation matrix i.e. how much correlation between 2 items is not captured by the model
+corrplot(resid(fit.po02,type="cor")$res.cov)
+```
+
+### Whats is suggested by modification indices ?
+
+```{r}
+mod_ind <- modificationindices(fit.po02)
+mod_ind <- mod_ind %>% arrange(desc(mi)) %>% filter(mi>10)
+mod_ind
+```
+
+### Implement them
+
+```{r}
+
+po02.model.mi <- paste(
+  po02.model,
+  str_c(mod_ind$lhs," ", mod_ind$op," ",mod_ind$rhs,collapse = "\n")
+)
+cat(po02.model.mi)
+```
+
+
+```{r}
+#fit
+                
+fit.po02.mi <- sem(po02.model.mi,  
+                    estimator = "DWLS",
+                    data = data.fit
+                #SHOULD SOME OTHER PARAMETERS BE SET?
+)
+
+lavaan::summary(fit.po02,standardized = TRUE)
+
+
+```
+
+```{r}
+# Same with standardised coefficients
+lavaanPlot(
+  model = fit.po02.mi, 
+   labels = labelsforplotting,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  coefs = TRUE, 
+  stand = TRUE,
+  sig=0.001
+  )
+```
+
+
+```{r}
+
+round(
+  sapply(list(sem.ori=fit.po02,sem.mi=fit.po02.mi),
+         function(x) fitmeasures(x,c("npar","chisq","df","cfi","rmsea","srmr"))
+         )
+,3)
+
+
 ```
 
