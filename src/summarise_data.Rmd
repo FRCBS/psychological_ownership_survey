@@ -27,7 +27,6 @@ library(readxl)
 library(here)
 library(corrplot)
 library(ggstats)
-library(responsesR)
 
 # https://github.com/cjvanlissa/worcs
 # https://cjvanlissa.github.io/worcs/articles/setup.html
@@ -220,8 +219,9 @@ qabbr <- c(
 All items are scored 1 (strongly disagree) to 7 (strongly agree).
 
 ```{r}
+#First very rough version
 
-#if (TRUE) { # if you have data you set this to false
+if (TRUE) { # if you have data you set this to false
   n <- 100
   #source("../../responsesR/R/responses.R")
   #create correlation matrix
@@ -254,21 +254,85 @@ All items are scored 1 (strongly disagree) to 7 (strongly agree).
   rownames(R) <- qabbr[1:18]
   colnames(R) <- qabbr[1:18]
   corrplot(R)
-#}
+  # Only correlations between latents 
+}
 ```
+
+
+
+```{r}
+#Tried to build to the correlation between latent factors, but...
+if (FALSE) { # if you have data you set this to false
+  n <- 100
+  #create correlation matrix
+  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
+  R <- matrix(
+  #     po           si           it           ie           ac          ai              
+  c( 1 ,0.5,0.5,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    0.5, 1 ,0.5,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, #po
+    0.5,0.5, 1 ,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+
+    0.3,0.3,0.3,    1 , 0.5,0.5, 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    0.3,0.3,0.3,    0.5, 1 ,0.5, 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, # si
+    0.3,0.3,0.3,    0.5,0.5, 1 , 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    
+    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 1  ,0.5,0.5,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 0.5, 1 ,0.5,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, #it
+    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 0.5,0.5, 1 ,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    1  ,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2, 1 ,0.5, 0.5,0.5,0.2, 0.2,0.2,0.2, # ie
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5, 1 , 0.5,0.5,0.2, 0.2,0.2,0.2,
+    
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5,0.5, 1 , 0.5,0.2, 0.2,0.2,0.2,
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5,0.5, 0.5, 1 ,0.2, 0.2,0.2,0.2, # ac
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2, 1 , 0.5,0.5,0.5,
+    
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5,  1 ,0.5,0.5,
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5, 0.5, 1 ,0.5, # ai
+    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5, 0.5,0.5, 1 
+    # bd and de are different. Create them later.
+    )
+  , nrow=18)
+  
+  R[R == 0.2] <-0
+  rownames(R) <- qabbr[1:18]
+  colnames(R) <- qabbr[1:18]
+  #Add a bit of noise 
+  # R <- R +  matrix(rnorm(n=length(R),mean=0,sd=0.1), nrow=18)
+  #Make symmetric
+  R[upper.tri(R)] <- t(R)[upper.tri(R)]
+  #isSymmetric(R)
+  
+  R <- R *0.5
+  R <- as.matrix(Matrix::nearPD(R)$mat)
+  diag(R) <- 1
+  #  Rplot <- round(R,digits = 1)
+  #  Rplot[Rplot <= -1] <- -1
+  #  Rplot[Rplot >= 1] <- 1
+  #   # if you have problems name the columns and rows here
+  
+  #corrplot(Rplot)
+  corrplot(R)
+  # When calling responsesR:get_responses always get an error
+  # Could not figure out how to simulate depencies between latent variables with usein responsesR
+  # But it is good enough for developping the script.
+  # Error in msn.cp2dp(cp, silent) : non-admissible CP
+ 
+}
+```
+
+
+
+
+
 
 
 ```{r}
 #simulate data with responsesR::get_responses
 if (TRUE) {
-
-  # data_likert_7<- genLikert(
-  #   size =  n ,
-  #   items = nrow(R), 
-  #   levels=7, 
-  #   location=rep(1,nrow(R)),
-  #   correlation = R)
-  # colnames(data_likert_7) <- qabbr[1:18]
+library(responsesR)
+  
   data_likert_7<- get_responses(n = n,
                 K = 7,
                 mu = rep(1,nrow(R)),
@@ -303,32 +367,93 @@ if (TRUE) {
     bd01 == 2 ~ "no",
     bd01 == 3 ~ "unsure",
   )
-  bd02 <- round(rlnorm(n=n,mean=2,sd =1)) # count of donations
-  #this should be correlated with gender, but it is not
-  bd03 <- ceiling(rnorm(n=n,mean=2,sd =0.6)) # count of donations in last 2 years
-  bd03 <- abs(bd03) # make sure there are only positive numbers
-  #this should be correlated with gender, but it is not
-  bd04 <- sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n)
   data <- bind_cols(
     data_likert_7,
     bd01,
-    bd02,
-    bd03,
-    bd04,
+    #bd02,
+    #bd03,
+    #bd04,
     de01,
     de02
   )
-  colnames(data) <- qabbr
+  colnames(data) <- qabbr[1:ncol(data)]
+  data <- data %>% 
+    mutate(
+      # to have some relationship between latent variables make donation counts and po correlate
+       bd02 = 
+      #take this from po 
+         round(as.numeric(po01)  +  
+                 as.numeric(po02)   + 
+                 as.numeric(data$po03) +
+      # and sex
+                 0.5*as.numeric(as.factor(de01))   + 
+      #with some noise
+                 rnorm(nrow(data),0,4) ),
+      #make sure it never goes below 1
+      bd02 = ifelse(bd02 < 2 ,1,bd02),
+      # and count donation in last two years from it with some noise
+      bd03 = round(ceiling(bd02 / 5) + rnorm(nrow(data),0,1)),
+      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n)
+    )
+  
+  
   
   summary(data)
 }
 ```
 
 
+
 ```{r}
 # https://stats.stackexchange.com/questions/648242/how-to-simulate-data-for-a-sem-model-with-moderation-effect-using-r 
 # https://github.com/RobinDenz1/simDAG
 # 
+if (FALSE) {
+  library(simDAG)
+
+  
+  # dag <- empty_dag() +
+  #   node("age", type="rnorm", mean=50, sd=4) +
+  #   node("sex", type="rbernoulli", p=0.5) +
+  #   node("bmi", type="gaussian", formula= ~ 12 + age*1.1 + sex*0.4, error=2) +
+  #   node("death", type="binomial", formula= ~ -15 + age*0.1 + bmi*0.3)
+  # set.seed(42)
+  # sim_dat <- sim_from_dag(dag, n_sim=100000)
+  # mod_bmi <- glm(bmi ~ age + sex, data=sim_dat, family="gaussian")
+  # summary(mod_bmi)
+  # 
+#   po =~ po01 + po02 + po03
+#                 si =~ si01 + si02 + si03
+#                 it =~ it01 + it02 + it03
+#                 ac =~ ac01 + ac02 + ac03 + ac04
+#                 ai =~ ai01 + ai02 + ai03 + ai04 
+# #                bd =~ bd01 + bd02 + bd03 + bd04 #lavaan ERROR: unknown ov.types:Da
+#                 bd =~ bd01 + bd02 + bd03
+  
+# probs1 <- c(0.05,0.1,0.2,0.3,0.2,0.1,0.05)
+#                 
+# dag <- empty_dag() + 
+#   node("po01", type="rcategorical", labels=c(1:7),probs= )+ 
+#   po02 + 
+#   po03 +
+#   si01 + 
+#   si02 + 
+#   si03 + 
+#   it01 + 
+#   it02 + 
+#   it03 + 
+#   ac01 + 
+#   ac02 + 
+#   ac03 + 
+#   ac04 + 
+#   ai01 + 
+#   ai02 + 
+#   ai03 + 
+#   ai04 + 
+#   bd01 + 
+#   bd02 + 
+#   bd03 + 
+}
 
 ```
 
@@ -363,6 +488,10 @@ summary(data)
 
 ```
 
+```{r}
+corrplot(cor(data %>% select(-bd01,-bd04,-de01)))
+
+```
 
 
 # Plot
