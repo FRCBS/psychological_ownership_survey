@@ -30,6 +30,7 @@ library(ggstats)
 library(lavaan)
 library(lavaanPlot)
 library(blavaan)
+library(manymome)
 
 # https://github.com/cjvanlissa/worcs
 # https://cjvanlissa.github.io/worcs/articles/setup.html
@@ -864,7 +865,7 @@ lavaanPlot(
 
 ```{r}
 
-lavaan::lavInspect()
+#lavaan::lavInspect()
 #lavOptions
 #?"lavaan-class"
 ```
@@ -897,7 +898,7 @@ mutate(
 #fit
                 
 fit.po03 <- sem(po02.model,  
-                    estimator = "DWLS", # as we have factors we do not need to use DWLS. IS something else better?
+                    estimator = "ML", # as we have factors we do not need to use DWLS. IS something else better?
                     data = data.fit2,
                 #fixed.x=FALSE #  fixed.x = FALSE is not supported when conditional.x = TRUE
                 conditional.x = FALSE # THIS DOES NOT WORK, HOW TO FIX?
@@ -926,31 +927,69 @@ lavaanPlot(
 
 
 ```{r}
+if (FALSE) {
 # As the fit.po03 with conditional.x TRUE does not the bootstrapping does not work either
 # Warning: lavaan->bootstrapLavaan():  
 #   1000 bootstrap runs failed or did not converge.
-fit.po03.boot <- bootstrapLavaan(
-  fit.po03,
-  FUN = "coef",
-  parallel = "multicore",
-  iseed = 74
-  )
+# fit.po03.boot <- bootstrapLavaan(
+#   fit.po03,
+#   FUN = "coef",
+#   parallel = "multicore",
+#   iseed = 74
+#   )
 #Error: lavaan->bootstrapLavaan(): 
 #this function is not (yet) available if conditional.x = TRUE
 
+  # https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q
+#>nBoots <- 1000
+#>SEM.model <- sem(Model, data = Dataset, se = "boot", test = "Bollen.Stine", bootstrap = nBoots)
+#>parameterEstimates(SEM.model, boot.ci.type = "norm", standardized = TRUE)
+
+# HS.model <- ' visual =~ x1 + x2 + x3
+# textual =~ x4 + x5 + x6
+# speed =~ x7 + x8 + x9 '
+# 
+# fit <- cfa(HS.model, data=HolzingerSwineford1939)
+# 
+# out <- bootstrapLavaan(fit, R = 100, FUN = function(x) {
+# standardizedSolution(x)$est }, verbose = TRUE)
+# 
+# This will return a 100x24 matrix (in practice, you may want to use a
+# much larger number for R). The rows are the bootstraps, the columns are
+# the model parameters (here including fixed parameters).
+# 
+# To get a 95% CI, you can compute percentiles on the columns of out:
+# 
+# # just one column:
+# quantile(out[,1], probs=c(0.025, 0.975))
+# 
+# # all columns
+# lapply(as.data.frame(out), quantile, probs=c(0.025, 0.975))
+# 
+# 
+# To bootstrap one of more fit measures, you can use something like:
+# 
+# out <- bootstrapLavaan(fit, R = 100, FUN = function(x) { fitMeasures(x,
+# c("cfi", "rmsea")) }, verbose = TRUE) 
+
+
+
 summary(fit.po03.boot)
+}
+
 ```
 
 THIS WORKS BUT HOW COUNT ci FROM THEM THEM?
+https://stackoverflow.com/questions/48612153/how-to-calculate-confidence-intervals-for-a-vector something like this if libraries won't work.
 
 Compare bootstrapped to original
 
 ```{r}
-
-x <- fit.po03.boot[,1]
-bootout <-list(t0 =  x,t = length(x))
-
-boot::boot.ci(bootout)
+# 
+# x <- fit.po03.boot[,1]
+# bootout <-list(t0 =  x,t = length(x))
+# 
+# boot::boot.ci(bootout)
 
 ```
 
@@ -967,15 +1006,54 @@ boot::boot.ci(bootout)
 # Would manymome work better?
 #https://sfcheung.github.io/manymome/articles/manymome.html
 #https://sfcheung.github.io/manymome/index.html 
-boot_out_lavaan <- do_boot(fit = fit_lavaan,
-                           R = 500,
-                           ncores = 1,
-                           seed = 58491)
+# boot_out_lavaan <- do_boot(fit = fit_lavaan,
+#                            R = 500,
+#                            ncores = 1,
+#                            seed = 58491)
 
+
+fit.po03 <- sem(po02.model,  
+                    estimator = "ML", # as we don't have factors anymore we do not need to use DWLS. IS something else better?
+                    data = data.fit2,
+                se = "boot"
+                )
+```
+
+
+
+```{r}
+fit.po03
+```
+
+
+```{r}
+fit.po03.best <- parameterEstimates(fit.po03)[parameterEstimates(fit.po03)$op == "~", ]
+fit.po03.best %>% select(-se,-z)
+```
+
+
+```{r}
+out_med <- indirect_effect(x = "blooddonor",
+                           y = "intention",
+                           m = c("psycown", "selfid"),
+                           fit = fit.po03,
+                           boot_ci = TRUE,
+                           R = 500,
+                           seed = 43143,
+                           ncores = 4)
 
 
 ```
 
+```{r}
+out_med
+```
+
+
+
+```{r}
+out_x_m2_y
+```
 
 
 ### BAYESIN SEM
