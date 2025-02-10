@@ -29,8 +29,8 @@ library(corrplot)
 library(ggstats)
 library(lavaan)
 library(lavaanPlot)
-library(blavaan)
-library(manymome)
+#library(blavaan) could get to work with this model
+#library(manymome) # could have interesting other statistics to look at
 
 # https://github.com/cjvanlissa/worcs
 # https://cjvanlissa.github.io/worcs/articles/setup.html
@@ -198,11 +198,6 @@ Demographics
 
 
 ```{r}
-#knitr::knit_exit()
-```
-
-
-```{r}
 #Make question abbreviations
 qabbr <- c(
     str_c("po0",1:3),
@@ -218,6 +213,18 @@ qabbr <- c(
 ```
 
 
+```{r}
+#With the simulated data sem fitting with data containing factors is unstable, hence here is data and basic model that fit.
+workingexample <- TRUE
+if (workingexample) {
+  load(file=here("results/workingexample.data.rdata"))
+  load(file=here("results/workingexample.fit.po02.rdata"))
+}
+
+
+```
+
+
 ## Simulate
 
 All items are scored 1 (strongly disagree) to 7 (strongly agree).
@@ -225,8 +232,8 @@ All items are scored 1 (strongly disagree) to 7 (strongly agree).
 ```{r}
 #First very rough version
 
-if (TRUE) { # if you have data you set this to false
-  n <- 100
+if (!workingexample) { # if you have data you set this to false
+  n <- 1000
   #source("../../responsesR/R/responses.R")
   #create correlation matrix
   #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
@@ -334,7 +341,7 @@ if (FALSE) { # if you have data you set this to false
 
 ```{r}
 #simulate data with responsesR::get_responses
-if (TRUE) {
+if (!workingexample) {
 library(responsesR)
   
   data_likert_7<- get_responses(n = n,
@@ -398,7 +405,7 @@ library(responsesR)
       bd02 = ifelse(bd02 < 2 ,1,bd02),
       # and count donation in last two years from it with some noise
       bd03 = round(ceiling(bd02 / 5) + rnorm(nrow(data),0,1)),
-      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n)
+      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n, replace = TRUE)
     )
   
   
@@ -413,6 +420,7 @@ library(responsesR)
 
 ```{r}
 
+if (!workingexample) {
 f1 <- function (x){
   #as numbers but labelled with words
     x <- factor(
@@ -437,12 +445,12 @@ data <- data %>%
 
 summary(data)
 
+}
 ```
 
 
 # Plot
 
-the responsesR likert plots look really good...
 
 
 ## Demographics Table 1
@@ -493,33 +501,12 @@ p
 
 ## Psychological ownership
 
-```{r , warning=FALSE}
-nlevels = 7
-
-items = data %>% 
-    select(which(str_detect(colnames(data) ,"^po"))) 
-
-#rename the questions in here from metadata
-
-qpo <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
-)
-plot(qpo, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
-```
 
 ```{r}
-
 gglikert(
   data %>% 
     select(which(str_detect(colnames(data) ,"^po"))) 
 )
-
 ```
 
 
@@ -528,107 +515,52 @@ gglikert(
 ## Self-identity
 
 
-```{r , warning=FALSE}
-
-items = data %>% 
+```{r}
+gglikert(
+  data %>% 
     select(which(str_detect(colnames(data) ,"^si"))) 
-
-#rename the questions in here from metadata
-qsi <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
 )
-plot(qsi, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
 ```
 
 
 ## Intention
 
-```{r , warning=FALSE}
-
-items = data %>% 
+```{r}
+gglikert(
+  data %>% 
     select(which(str_detect(colnames(data) ,"^it"))) 
-
-#rename the questions in here from metadata
-qit <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
 )
-plot(qit, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
 ```
 
 
 ## Intention to donate for emergency
 
-```{r , warning=FALSE}
-
-items = data %>% 
+```{r}
+gglikert(
+  data %>% 
     select(which(str_detect(colnames(data) ,"^ie"))) 
-
-#rename the questions in here from metadata
-qie <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
 )
-plot(qie, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
 ```
+
 
 
 ## Antecedents of psychological ownership - Control
 
-```{r , warning=FALSE}
-
-items = data %>% 
+```{r}
+gglikert(
+  data %>% 
     select(which(str_detect(colnames(data) ,"^ac"))) 
-
-#rename the questions in here from metadata
-qac <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
 )
-plot(qac, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
 ```
-
 
 ## Antecedents of psychological ownership - Intimate knowledge
 
 
-```{r , warning=FALSE}
-
-items = data %>% 
+```{r}
+gglikert(
+  data %>% 
     select(which(str_detect(colnames(data) ,"^ai"))) 
-
-#rename the questions in here from metadata
-qai <- likert(
-  items = as.data.frame(items),
-  nlevels = nlevels
-  
 )
-plot(qai, 
-     type = "heat",
-     legend.position = "bottom",
-     text.size=3,
-     include.histogram = FALSE)
 ```
 
 
@@ -658,12 +590,30 @@ data.fit <- data %>%
     across(isfactor, ~ fct_drop(.x)
     ) %>% 
       mutate(
-        bd04 = as.numeric(bd04) # lavaan cannot handle dates
+        bd04 = as.numeric(bd04), # lavaan cannot handle dates
+        bd04 = bd04 / 10^-(2 - str_length(as.numeric(max(bd04)))) # https://groups.google.com/g/lavaan/c/r7w-4HHg5R0 
+        #"Your underweight variance seems to be much larger than other variances.  Try dividing it by 10 or 100 to make the SDs more similar across modeled variables." 
+        # But this does not seem to necessarily help.
       )
   )
 
+# To make bootstrapping run there cannot be any unordered factors
+data.fit2 <- data.fit %>% 
+  mutate(
+    de01 = as.ordered(de01)
+  ) %>% # and neither any factors at all
+mutate(
+  across(everything(),as.numeric)
+)  # but this also good for plotting correlations
+
+
+summary(data.fit)
 ```
 
+
+```{r}
+corrplot(cor(data.fit2))
+```
 
 
 
@@ -679,7 +629,8 @@ po01.model <- ' po =~ po01 + po02 + po03
 '
                 
 fit.po01.cfa <- cfa(po01.model,  
-                    estimator = "DWLS",
+                    estimator = "WLSMV", #
+                    
                     data = data.fit)
 fit.po01.cfa
 # Minimum function test statistic is chi^2
@@ -699,23 +650,28 @@ lavaan::summary(fit.po01.cfa,standardized = TRUE) # tidySEM is loaded this fails
 ```{r}
 #lavaan::parameterestimates(fit.po02)
 # Check items which correlate poorly with their latent factor
-cfastd <- lavaan::standardizedsolution(fit.po02)
+cfastd <- lavaan::standardizedsolution(fit.po01.cfa)
 cfastd %>% 
   filter(abs(est.std) < 0.3) %>% 
-  select(-label,-z,-se) %>% 
+  select(-z,-se) %>% 
   arrange(abs(est.std)) %>% 
   # Just the loadings
-  filter(op == '=~')
+  filter(op != '~1')
 
 ```
 
 
+
+
 ```{r}
-lavaan::fitmeasures(fit.po02,c("npar","chisq","df","cfi","rmsea","srmr"))
+lavaan::fitmeasures(fit.po01.cfa,c("npar","chisq","df","cfi","rmsea","srmr"))
 ```
 
+https://stats.stackexchange.com/questions/541707/cfa-in-lavaan-wont-converge 
+"For the comparative fit indices CFI and TLI, you need at least >.900. For the absolute fit indices RMSEA and SRMR, you should have <.080."
+So ones from simulated data look good enough.
 
-```{r}
+```{r , fig.height=20}
 lavaanPlot(
   fit.po01.cfa,
    edge_options = list(color = "grey"),
@@ -777,19 +733,49 @@ cat(po02.model)
 
 
 ```{r}
+
+
+if (!workingexample) {
 #fit
-                
+#https://web.pdx.edu/~newsomj/semclass/ho_categorical.pdf
+# "There seems to be growing consensus among researchers that the best approach to analysis of
+# binary and ordinal variables (with few categories) is what is referred most to most commonly as diagonally
+# weighted least squares (DWLS) approach (Muthén, du Toit, & Spisic, 1997). This estimation method is
+# called weighted least squares mean and variance adjusted (WLSMV) in Mplus and the R package lavaan
+# (it is invoked by estimator = WLSMV). "
+
+#https://www.tandfonline.com/doi/full/10.1080/10705511.2021.1877548                
 fit.po02 <- sem(po02.model,  
-                    estimator = "DWLS",
-                    data = data.fit
+                #default maximum likelihood (ML, MLR,..) methods don't work with categorials
+                 #estimator = "DWLS", # diagonally weighted least squares, often recomended
+                    estimator = "WLSMV", # robust diagonally weighted least squares stable and should work with ordered factors
+                #We select WLSMV as the estimator. Often it does not fit with the simulated data.
+                #It might work with real data and then we compare ML estimates from bootstrapped.
+                                 data = data.fit
+                
                 #SHOULD SOME OTHER PARAMETERS BE SET?
+                
+                #The sem function is a wrapper for the more general lavaan function, but setting the following default options:
+                # int.ov.free = TRUE, If FALSE, the intercepts of the observed variables are fixed to zero.
+                # int.lv.free = FALSE, If FALSE, the intercepts of the latent variables are fixed to zero.
+                # auto.fix.first = TRUE (unless std.lv = TRUE),  If TRUE, the factor loading of the first indicator is set to 1.0 for every latent variable.
+                # auto.fix.single = TRUE, If TRUE, the residual variance (if included) of an observed indicator is set to zero if it is the only indicator of a latent variable.
+                # auto.var = TRUE, If TRUE, the (residual) variances of both observed and latent variables are set free.
+                # auto.cov.lv.x = TRUE, If TRUE, the covariances of exogenous latent variables are included in the model and set free.
+                # auto.efa = TRUE, 
+                # auto.th = TRUE, 
+                # auto.delta = TRUE,
+                # auto.cov.y = TRUE If TRUE, the covariances of dependent variables (both observed and latent) are included in the model and set free.
                   )
 
-# Warning: lavaan->lav_data_full():  
-#    exogenous variable(s) declared as ordered in data: "ie01"
-# Warning: lavaan->lav_data_full():  
-#    some observed variances are (at least) a factor 1000 times larger than others; use varTable(fit) to investigate
-#SHOULD SOMETHING BE DONE ABOUT THIS?
+
+#This is quite unstable. Sometimes it says:
+#"lavaan 0.6-19 did NOT end normally after nn iterations"
+#and sometimes
+#"lavaan 0.6-19 ended normally after nn iterations"
+#You need to have enough data n~1000?
+# 
+}
 
 lavaan::summary(fit.po02,standardized = TRUE)
 
@@ -813,10 +799,26 @@ lavaan::inspect(fit.po02,"r2")
 
 ```{r}
 lavaan::standardizedsolution(fit.po02) %>% select(-label)
+# Use standardizedSolution to obtain SEs and test statistics for standardized estimates. 
+
 ```
 
 ```{r}
 lavaan::standardizedsolution(fit.po02) %>% select(-label,se,z) %>%  filter(op == '~')
+```
+
+
+
+```{r}
+
+fit.po02.est  <-standardizedSolution(fit.po02)
+fit.po02.est %>% 
+  filter(abs(est.std) < 0.3) %>% 
+  select(-z,-se) %>% 
+  arrange(abs(est.std)) %>% 
+  # Just the loadings
+  filter(op != '~1')
+
 ```
 
 
@@ -863,45 +865,21 @@ lavaanPlot(
 ```
 
 
-```{r}
-
-#lavaan::lavInspect()
-#lavOptions
-#?"lavaan-class"
-```
-
-
-
-```{r}
-#fit.po02.boot <- bootstrapLavaan(fit.po02)
-#Error: lavaan->bootstrapLavaan(): 
-#this function is not (yet) available if conditional.x = TRUE
-```
-
-
-
-
-
-
 ### SEM with bootstrapping
 
 ```{r}
 
-# To make bootstrapping run there cannot be any unordered factors
-data.fit2 <- data.fit %>% 
-  mutate(
-    de01 = as.ordered(de01)
-  ) %>% # and neither any factors at all
-mutate(
-  across(everything(),as.numeric)
-)  
+
 #fit
-                
+
+# https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q good example code
+
+nBoots <- 1000            
 fit.po03 <- sem(po02.model,  
-                    estimator = "ML", # as we have factors we do not need to use DWLS. IS something else better?
-                    data = data.fit2,
-                #fixed.x=FALSE #  fixed.x = FALSE is not supported when conditional.x = TRUE
-                conditional.x = FALSE # THIS DOES NOT WORK, HOW TO FIX?
+                    estimator = "ML", # bootstrapping does not work with estimators designed for factors
+                    data = data.fit2, # data that is completely numeric
+                bootstrap = nBoots,
+                se = "boot"
                 )
 
 lavaan::summary(fit.po03,standardized = TRUE)
@@ -924,164 +902,56 @@ lavaanPlot(
 
 ```
 
-
-
 ```{r}
-if (FALSE) {
-# As the fit.po03 with conditional.x TRUE does not the bootstrapping does not work either
-# Warning: lavaan->bootstrapLavaan():  
-#   1000 bootstrap runs failed or did not converge.
-# fit.po03.boot <- bootstrapLavaan(
-#   fit.po03,
-#   FUN = "coef",
-#   parallel = "multicore",
-#   iseed = 74
-#   )
-#Error: lavaan->bootstrapLavaan(): 
-#this function is not (yet) available if conditional.x = TRUE
-
-  # https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q
-#>nBoots <- 1000
-#>SEM.model <- sem(Model, data = Dataset, se = "boot", test = "Bollen.Stine", bootstrap = nBoots)
-#>parameterEstimates(SEM.model, boot.ci.type = "norm", standardized = TRUE)
-
-# HS.model <- ' visual =~ x1 + x2 + x3
-# textual =~ x4 + x5 + x6
-# speed =~ x7 + x8 + x9 '
-# 
-# fit <- cfa(HS.model, data=HolzingerSwineford1939)
-# 
-# out <- bootstrapLavaan(fit, R = 100, FUN = function(x) {
-# standardizedSolution(x)$est }, verbose = TRUE)
-# 
-# This will return a 100x24 matrix (in practice, you may want to use a
-# much larger number for R). The rows are the bootstraps, the columns are
-# the model parameters (here including fixed parameters).
-# 
-# To get a 95% CI, you can compute percentiles on the columns of out:
-# 
-# # just one column:
-# quantile(out[,1], probs=c(0.025, 0.975))
-# 
-# # all columns
-# lapply(as.data.frame(out), quantile, probs=c(0.025, 0.975))
-# 
-# 
-# To bootstrap one of more fit measures, you can use something like:
-# 
-# out <- bootstrapLavaan(fit, R = 100, FUN = function(x) { fitMeasures(x,
-# c("cfi", "rmsea")) }, verbose = TRUE) 
-
-
-
-summary(fit.po03.boot)
-}
-
-```
-
-THIS WORKS BUT HOW COUNT ci FROM THEM THEM?
-https://stackoverflow.com/questions/48612153/how-to-calculate-confidence-intervals-for-a-vector something like this if libraries won't work.
-
-Compare bootstrapped to original
-
-```{r}
-# 
-# x <- fit.po03.boot[,1]
-# bootout <-list(t0 =  x,t = length(x))
-# 
-# boot::boot.ci(bootout)
-
-```
-
-```{r}
-# https://cran.r-project.org/web/packages/semhelpinghands/vignettes/standardizedSolution_boot_ci.html
-#another option
-
-#https://blogonresearch.github.io/posts/bootstrap_confidence_intervals_for_standardized_solution_in_lavaan/
-```
-
-
-
-```{r}
-# Would manymome work better?
-#https://sfcheung.github.io/manymome/articles/manymome.html
-#https://sfcheung.github.io/manymome/index.html 
-# boot_out_lavaan <- do_boot(fit = fit_lavaan,
-#                            R = 500,
-#                            ncores = 1,
-#                            seed = 58491)
-
-
-fit.po03 <- sem(po02.model,  
-                    estimator = "ML", # as we don't have factors anymore we do not need to use DWLS. IS something else better?
-                    data = data.fit2,
-                se = "boot"
-                )
-```
-
-
-
-```{r}
-fit.po03
+fit.po03.best <- parameterEstimates(fit.po03)
+fit.po03.best %>% select(-se,-z) %>% filter(op == "~")
 ```
 
 
 ```{r}
-fit.po03.best <- parameterEstimates(fit.po03)[parameterEstimates(fit.po03)$op == "~", ]
-fit.po03.best %>% select(-se,-z)
-```
+#Compare estimates
 
-
-```{r}
-out_med <- indirect_effect(x = "blooddonor",
-                           y = "intention",
-                           m = c("psycown", "selfid"),
-                           fit = fit.po03,
-                           boot_ci = TRUE,
-                           R = 500,
-                           seed = 43143,
-                           ncores = 4)
-
-
-```
-
-```{r}
-out_med
-```
-
-
-
-```{r}
-out_x_m2_y
-```
-
-
-### BAYESIN SEM
-
-
-
-
-```{r}
-#fit
-                
-fit.po04 <- blavaan(po02.model,  
-                    #estimator = "DWLS",
-                    data = data.fit2,
-                #SHOULD SOME OTHER PARAMETERS BE SET?
-                n.chains = 4,
-                sample = 100,
-                mcmcfile =  here("results/fit.po04.rdata")
-                  )
-
-
-summary(fit.po04,standardized = TRUE)
 
 ```
 
 
 
+## Compare bootstrapped to original
 
 
+```{r}
+data.forest  <- fit.po03.best %>% 
+  mutate(estmet = "Bootstrapped") %>%  
+  filter(op == "~") %>% 
+  bind_rows(
+    fit.po02.est %>% mutate(estmet = "Original") %>% 
+      rename(est=est.std) %>% 
+      filter(op == "~") 
+  ) %>% 
+  mutate(
+    term = str_c(label,":",lhs,op,rhs)
+    ) %>% 
+  arrange(estmet, term)
+
+pos <- position_nudge(y=as.numeric(as.factor(data.forest$estmet))/5 -0.1) 
+
+data.forest %>% 
+  mutate(
+    hollow_color = ifelse(ci.lower < 0 & ci.upper > 0, NA, "black")
+  ) %>% 
+  ggplot(aes(est,xmin=ci.lower,xmax=ci.upper,y=term,fill=I(hollow_color),color=estmet))+
+  geom_vline(xintercept=0,color="grey") +
+  geom_linerange(position=pos)+
+  geom_point(shape=21,siz=3,position=pos)+
+  scale_fill_discrete(na.value=NA) + 
+  labs(x="Standardised effect size",y="Relationship") +
+  labs(color="Estimation\n method")
+
+
+```
+
+
+How do we choose which to report? WE SHOULD DECIDE THIS BEFOREHAND!
 
 
 ## Improvements for SEM 
@@ -1094,9 +964,6 @@ lavaan::inspect(fit.po02,"est")$gamma
 
 ```
 
-```{r}
-#lavaan::inspect(fit.po02,"sampstat")$res.cov
-```
 
 ```{r}
 #residual correlation matrix i.e. how much correlation between 2 items is not captured by the model
@@ -1106,10 +973,19 @@ corrplot(resid(fit.po02,type="cor")$res.cov)
 ### Whats is suggested by modification indices ?
 
 ```{r}
-mod_ind <- modificationindices(fit.po02)
+mod_ind <- modificationindices(
+  fit.po02,
+  alpha = 0.001
+  )
 mod_ind <- mod_ind %>% arrange(desc(mi)) %>% filter(mi>10)
 mod_ind
 ```
+
+
+Even with this random data you get a lot. Does it make any sense to use them? How to set the cut-offs?
+
+WE SHOULD DECIDE ABOUT THIS BEFOREHAND
+
 
 ### Implement them
 
@@ -1127,7 +1003,7 @@ cat(po02.model.mi)
 #fit
                 
 fit.po02.mi <- sem(po02.model.mi,  
-                    estimator = "DWLS",
+                    estimator = "WLSMV",
                     data = data.fit
                 #SHOULD SOME OTHER PARAMETERS BE SET?
 )
@@ -1155,7 +1031,7 @@ lavaanPlot(
 
 round(
   sapply(list(sem.ori=fit.po02,sem.mi=fit.po02.mi),
-         function(x) fitmeasures(x,c("npar","chisq","df","cfi","rmsea","srmr"))
+         function(x) fitmeasures(x,c("npar","chisq","df","cfi","rmsea","srmr","aic"))
          )
 ,3)
 
