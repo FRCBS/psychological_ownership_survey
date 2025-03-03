@@ -246,7 +246,7 @@ qabbr <- c(
 #With the simulated data sem fitting with data containing factors is unstable, hence here is data and models from that fit.
 datafile <- "workingexample20250303.data.rdata"
 workingexample <- TRUE # TRUE for working with presimulated data
-fitmodels <- TRUE # FALSE for working with prefitted models
+fitmodels <- FALSE # FALSE for working with prefitted models
 if (workingexample) {
   load(file=here(str_c("results/",datafile)))
 }
@@ -824,7 +824,7 @@ fit.po02null.est %>%
 
 ```{r}
 
-labelsforplotting <- c(
+labelsforplottingnull <- c(
   #"psycown" = "Psychological ownership",
   "selfid"  = "Self-identity",
   "intention" = "Intention",
@@ -836,7 +836,7 @@ lavaanPlot(
   coefs = TRUE,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
-  labels = labelsforplotting,
+  labels = labelsforplottingnull,
 
   #In simulated data there should be correlations inside
   # bloodonor, psycown, selfid
@@ -854,7 +854,7 @@ lavaanPlot(
 # Same with standardised coefficients
 lavaanPlot(
   model = fit.po02null, 
-   labels = labelsforplotting,
+   labels = labelsforplottingnull,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
   coefs = TRUE, 
@@ -1057,7 +1057,7 @@ lavaan::summary(fit.po03null,standardized = TRUE)
 ```{r}
 lavaanPlot(
   model = fit.po03null, 
-   labels = labelsforplotting,
+   labels = labelsforplottingnull,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
   coefs = TRUE, 
