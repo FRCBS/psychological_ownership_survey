@@ -11,7 +11,11 @@ output:
 ---
 
 
+TODO:
 
+- is the null model correct ?
+
+- should some other parameters be set to SEM fitting?
 
 
 ```{r setup, include=FALSE}
@@ -51,6 +55,7 @@ library(lavaanPlot)
 ## Import
 
 ```{r}
+# Read real data in 
 # file <- here("data/Tulokset - xxxxx.xlsx")
 # data <- read_xlsx(file,n_max = XX)
 # summary(data)
@@ -78,6 +83,7 @@ Items
 3. I feel like I own donating blood.
 </td> </tr>
 <tr> <td></td>
+
 <td>
 Self-identity
 </td> </tr>
@@ -94,6 +100,7 @@ Self-identity
 3. Donating blood is an important part of who I am.
 </td> </tr>
 <tr> <td></td>
+
 <td>
 Intention
 </td></tr>
@@ -106,6 +113,7 @@ Intention
 2. I intend to donate blood in the future.
 </td> </tr>
 <tr><td>it03</td>
+
 <td>
 3. I intend to make more than just a one-off blood donation.
 </td></tr>
@@ -122,6 +130,7 @@ Intention to donate for emergency
 Antecedents of psychological ownership
 </td></tr>
 <tr><td></td> 
+
 <td>
 Control
 </td></tr>
@@ -146,6 +155,7 @@ Control
 Intimate knowledge
 </td></tr>
 <tr><td>ai01</td>
+
 <td>
 1. I am intimately familiar with what is going on with regard to donating blood.
 </td></tr>
@@ -162,6 +172,25 @@ Intimate knowledge
 4. I have a broad understanding of donating blood.
 </td></tr>
 <tr><td></td>
+
+<td>
+Self-Investment
+</td></tr>
+<tr><td>iv01</td>
+<td>
+1.	I have invested a major part of myself into donating blood.
+</td></tr>
+<tr><td>iv02</td>
+<td>
+2. I have invested a significant amount of my time into donating blood.
+</td></tr>
+<tr><td>iv03</td>
+<td>
+3. Overall, I invested a lot into donating blood.
+</td></tr>
+<tr><td></td>
+
+
 <td>
 Blood donation history
 </td></tr>
@@ -182,6 +211,7 @@ Blood donation history
 4. When did you last attend a Finnish Red Cross blood donation centre with the intention of donating blood? [select date]
 </td></tr>
 <tr><td></td>
+
 <td>
 Demographics
 </td></tr>
@@ -195,8 +225,6 @@ Demographics
 </table>
 
 
-
-
 ```{r}
 #Make question abbreviations
 qabbr <- c(
@@ -206,6 +234,7 @@ qabbr <- c(
     str_c("ie0",1),
     str_c("ac0",1:4),
     str_c("ai0",1:4),
+    str_c("iv0",1:3),
     str_c("bd0",1:4),
     str_c("de0",1:2)
   )
@@ -214,11 +243,19 @@ qabbr <- c(
 
 
 ```{r}
-#With the simulated data sem fitting with data containing factors is unstable, hence here is data and basic model that fit.
-workingexample <- TRUE
+#With the simulated data sem fitting with data containing factors is unstable, hence here is data and models from that fit.
+datafile <- "workingexample20250303.data.rdata"
+workingexample <- TRUE # TRUE for working with presimulated data
+fitmodels <- TRUE # FALSE for working with prefitted models
 if (workingexample) {
-  load(file=here("results/workingexample.data.rdata"))
-  load(file=here("results/workingexample.fit.po02.rdata"))
+  load(file=here(str_c("results/",datafile)))
+}
+if (!fitmodels) {
+  load(file=here(str_replace(str_c("results/",datafile),"\\.data\\.",".models.")))
+  fit.po02 <- models$fit.po02
+  fit.po02null <- models$fit.po02null
+  fit.po03 <- models$fit.po03
+  fit.po03null <- models$fit.po03null
 }
 
 
@@ -230,111 +267,44 @@ if (workingexample) {
 All items are scored 1 (strongly disagree) to 7 (strongly agree).
 
 ```{r}
-#First very rough version
-
 if (!workingexample) { # if you have data you set this to false
   n <- 1000
   #source("../../responsesR/R/responses.R")
   #create correlation matrix
-  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
-  #use tidyverse str function to create names str_glue
+  #po 3, si 3,  it 3, ie 1, ac 4,ai 4, in 3 
   R <- matrix(
-  #     po          si        it        ie         ac        ai              
-  c( 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,
-    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 
+  #     po          si        it        ie         ac        ai              in
+  c( 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 ,0.2,0.2,0.2,0.2,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,0.5,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,0.5,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 ,0.5,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5,0.5, 1 ,0.2,0.2,0.2,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2, 1 ,0.5,0.5,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5, 1 ,0.5,
+    0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.2,0.5,0.5, 1 
     # bd and de are different
     )
-  , nrow=18)
+  , nrow=21)
     # if you have problems name the columns and rows here
-  rownames(R) <- qabbr[1:18]
-  colnames(R) <- qabbr[1:18]
+  rownames(R) <- qabbr[1:21]
+  colnames(R) <- qabbr[1:21]
   corrplot(R)
   # Only correlations between latents 
 }
 ```
-
-
-
-```{r}
-#Tried to build to the correlation between latent factors, but...
-if (FALSE) { # if you have data you set this to false
-  n <- 100
-  #create correlation matrix
-  #po 3, si 3,  it 3, ie 1, ac 4,ai 4,bd 4, de 2
-  R <- matrix(
-  #     po           si           it           ie           ac          ai              
-  c( 1 ,0.5,0.5,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    0.5, 1 ,0.5,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, #po
-    0.5,0.5, 1 ,    0.3,0.3,0.3, -0.1,-0.1,-0.1, 0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-
-    0.3,0.3,0.3,    1 , 0.5,0.5, 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    0.3,0.3,0.3,    0.5, 1 ,0.5, 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, # si
-    0.3,0.3,0.3,    0.5,0.5, 1 , 0.7,0.7,0.7,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    
-    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 1  ,0.5,0.5,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 0.5, 1 ,0.5,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2, #it
-    -0.1,-0.1,-0.1, 0.7,0.7,0.7, 0.5,0.5, 1 ,    0.2,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    1  ,0.2,0.2, 0.2,0.2,0.2, 0.2,0.2,0.2,
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2, 1 ,0.5, 0.5,0.5,0.2, 0.2,0.2,0.2, # ie
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5, 1 , 0.5,0.5,0.2, 0.2,0.2,0.2,
-    
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5,0.5, 1 , 0.5,0.2, 0.2,0.2,0.2,
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.5,0.5, 0.5, 1 ,0.2, 0.2,0.2,0.2, # ac
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2, 1 , 0.5,0.5,0.5,
-    
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5,  1 ,0.5,0.5,
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5, 0.5, 1 ,0.5, # ai
-    0.2,0.2,0.2,    0.2,0.2,0.2, 0.2,0.2,0.2,   0.2,0.2,0.2, 0.2,0.2,0.5, 0.5,0.5, 1 
-    # bd and de are different. Create them later.
-    )
-  , nrow=18)
-  
-  R[R == 0.2] <-0
-  rownames(R) <- qabbr[1:18]
-  colnames(R) <- qabbr[1:18]
-  #Add a bit of noise 
-  # R <- R +  matrix(rnorm(n=length(R),mean=0,sd=0.1), nrow=18)
-  #Make symmetric
-  R[upper.tri(R)] <- t(R)[upper.tri(R)]
-  #isSymmetric(R)
-  
-  #R <- R *0.5
-  R <- as.matrix(Matrix::nearPD(R)$mat)
-  diag(R) <- 1
-  #  Rplot <- round(R,digits = 1)
-  #  Rplot[Rplot <= -1] <- -1
-  #  Rplot[Rplot >= 1] <- 1
-  #   # if you have problems name the columns and rows here
-  
-  #corrplot(Rplot)
-  corrplot(R)
-  # When calling responsesR:get_responses always get an error
-  # Could not figure out how to simulate depencies between latent variables with usein responsesR
-  # But it is good enough for developping the script.
-  # Error in msn.cp2dp(cp, silent) : non-admissible CP
- 
-}
-```
-
-
-
 
 
 
@@ -347,7 +317,7 @@ library(responsesR)
   data_likert_7<- get_responses(n = n,
                 K = 7,
                 mu = rep(1,nrow(R)),
-                gamma1 = -0.1,
+                gamma1 = 0.1,
                 sd = 1,
                 R=R
   )
@@ -357,8 +327,8 @@ library(responsesR)
   de01 <- get_responses(n = n,
                 K = 4,
                 mu = -1,
-                gamma1 = -0.1,
-                sd = 0.5
+                gamma1 = 0.1,
+                sd = 0.3
   )
   de01 <-     
       case_when(
@@ -370,7 +340,7 @@ library(responsesR)
   bd01 <- get_responses(n = n,
                         K = 3,
                         mu = -1,
-                        gamma1 = 0.5,
+                        gamma1 = 0.3,
                         sd = 0.7
   )
   bd01 <- case_when(
@@ -398,20 +368,26 @@ library(responsesR)
                  as.numeric(po02)   + 
                  as.numeric(data$po03) +
       # and sex
-                 0.5*as.numeric(as.factor(de01))   + 
+                 0.3*as.numeric(as.factor(de01))   + 
       #with some noise
                  rnorm(nrow(data),0,4) ),
       #make sure it never goes below 1
       bd02 = ifelse(bd02 < 2 ,1,bd02),
       # and count donation in last two years from it with some noise
       bd03 = round(ceiling(bd02 / 5) + rnorm(nrow(data),0,1)),
-      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n, replace = TRUE)
+      bd03 = ifelse(bd03 < 1 ,1,bd03),
+      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n, replace = TRUE),
+      de02 = ifelse(de02 < 18 ,18,de02),
+      de02 = ifelse(de02 > 70 ,70,de02)
     )
   
   
   
+  
+  save(data, file=here(str_c("results/",datafile)))
   summary(data)
-}
+} 
+
 ```
 
 
@@ -420,7 +396,7 @@ library(responsesR)
 
 ```{r}
 
-if (!workingexample) {
+
 f1 <- function (x){
   #as numbers but labelled with words
     x <- factor(
@@ -435,7 +411,7 @@ f1 <- function (x){
 data <- data %>% 
   mutate_at(
     vars(
-      qabbr[1:18]),
+      qabbr[1:21]),
     ~ f1(.) 
     ) %>% 
   mutate(bd04 = as.Date(bd04),
@@ -443,9 +419,10 @@ data <- data %>%
          de01 = factor(de01)
          )  
 
-summary(data)
 
-}
+
+
+summary(data)
 ```
 
 
@@ -564,6 +541,18 @@ gglikert(
 ```
 
 
+## Antecedents of psychological ownership - Self-Investment
+
+
+```{r}
+gglikert(
+  data %>% 
+    select(which(str_detect(colnames(data) ,"^iv"))) 
+)
+```
+
+
+
 # Model
 
 
@@ -579,6 +568,8 @@ library(lavaan)
 ## Confirmatory factor analysis
 
 ```{r}
+models <- list()
+
 isordered <- data %>%  summarise(across(everything(), ~ is.ordered(.x))) %>%  as.logical() %>% which()
 isfactor <- data %>%  summarise(across(everything(), ~ is.factor(.x))) %>%  as.logical() %>% which()
 
@@ -623,6 +614,7 @@ po01.model <- ' po =~ po01 + po02 + po03
                 it =~ it01 + it02 + it03
                 ac =~ ac01 + ac02 + ac03 + ac04
                 ai =~ ai01 + ai02 + ai03 + ai04 
+                iv =~ iv01 + iv02 + iv03
                 #bd =~ bd01 + bd02 + bd03 + bd04
                 bd =~ bd02 + bd01 + bd03 + bd04 #bd02 is sure correlate positively
 
@@ -690,7 +682,7 @@ round(
          )
 ,3)
 
-#cfa should be better than cfa.o in all measures. cfi should be bigger, chi and srmr smaller in model cfa
+#cfa should be better than cfa.o in all measures. cfi and chisq should be bigger, rmsea and srmr smaller in model cfa
 ```
 
 ```{r}
@@ -703,7 +695,177 @@ round(
 
 ## SEM
 
-### Basic SEM
+### Null model for SEM
+
+```{r}
+#https://stats.stackexchange.com/questions/340857/serial-mediation-in-r-how-to-setup-the-model
+
+# N.B. you need to check that first item is positively correlated with your latent factor
+# Otherwise you get opposite direction 
+
+po02null.model <- ' 
+#measurement model
+#psycown =~ po01 + po02 + po03 #NO PSYCOWN
+selfid =~ si01 + si02 + si03
+intention =~ it01 + it02 + it03
+##psycown_cont =~ ac01 + ac02 + ac03 + ac04 # these were not used in Edwards23
+##psycown_know =~ ai01 + ai02 + ai03 + ai04 # these were not used in Edwards23  
+blooddonor =~ bd02 + bd01 + bd03 +bd04 # do we want to include the DATE OF LAST DONATION?
+
+#mediation
+#psycown ~ a1 *  blooddonor #NO PSYCOWN 
+
+#selfid ~ a2 * blooddonor + d21 * psycown
+selfid ~ a2 * blooddonor # #NO PSYCOWN
+
+#regression
+intention ~  de01 + de02 + ie01 +  cp * blooddonor  + b2 * selfid #NO PSYCOWN
+#intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
+
+#ind_eff := a1* d21 * b2 #NO PSYCOWN
+'
+
+cat(po02null.model)
+
+```
+
+
+```{r}
+
+
+if (fitmodels) {
+#fit
+#https://web.pdx.edu/~newsomj/semclass/ho_categorical.pdf
+# "There seems to be growing consensus among researchers that the best approach to analysis of
+# binary and ordinal variables (with few categories) is what is referred most to most commonly as diagonally
+# weighted least squares (DWLS) approach (Muthén, du Toit, & Spisic, 1997). This estimation method is
+# called weighted least squares mean and variance adjusted (WLSMV) in Mplus and the R package lavaan
+# (it is invoked by estimator = WLSMV). "
+
+#https://www.tandfonline.com/doi/full/10.1080/10705511.2021.1877548                
+fit.po02null <- sem(po02null.model,  
+                #default maximum likelihood (ML, MLR,..) methods don't work with categorials
+                 #estimator = "DWLS", # diagonally weighted least squares, often recomended
+                    estimator = "WLSMV", # robust diagonally weighted least squares stable and should work with ordered factors
+                #We select WLSMV as the estimator. Often it does not fit with the simulated data.
+                #It might work with real data and then we compare ML estimates from bootstrapped.
+                                 data = data.fit
+                
+                #SHOULD SOME OTHER PARAMETERS BE SET?
+                
+                #The sem function is a wrapper for the more general lavaan function, but setting the following default options:
+                # int.ov.free = TRUE, If FALSE, the intercepts of the observed variables are fixed to zero.
+                # int.lv.free = FALSE, If FALSE, the intercepts of the latent variables are fixed to zero.
+                # auto.fix.first = TRUE (unless std.lv = TRUE),  If TRUE, the factor loading of the first indicator is set to 1.0 for every latent variable.
+                # auto.fix.single = TRUE, If TRUE, the residual variance (if included) of an observed indicator is set to zero if it is the only indicator of a latent variable.
+                # auto.var = TRUE, If TRUE, the (residual) variances of both observed and latent variables are set free.
+                # auto.cov.lv.x = TRUE, If TRUE, the covariances of exogenous latent variables are included in the model and set free.
+                # auto.efa = TRUE, 
+                # auto.th = TRUE, 
+                # auto.delta = TRUE,
+                # auto.cov.y = TRUE If TRUE, the covariances of dependent variables (both observed and latent) are included in the model and set free.
+                  )
+
+
+#This is quite unstable. Sometimes it says:
+#"lavaan 0.6-19 did NOT end normally after nn iterations"
+#and sometimes
+#"lavaan 0.6-19 ended normally after nn iterations"
+#You need to have enough data n~1000?
+#
+models[["fit.po02null"]] <- fit.po02null
+}
+
+lavaan::summary(fit.po02null,standardized = TRUE)
+
+```
+
+```{r}
+varTable(fit.po02null)
+```
+
+IS ie01 a problem? should it be numeric?
+IS bd04 a problem? should we reduce its variation by scaling it down?
+
+
+
+```{r}
+#inspect(fit,what="")
+lavaan::inspect(fit.po02null,"r2")
+```
+
+
+
+```{r}
+lavaan::standardizedsolution(fit.po02null) %>% select(-label)
+# Use standardizedSolution to obtain SEs and test statistics for standardized estimates. 
+
+```
+
+```{r}
+lavaan::standardizedsolution(fit.po02null) %>% select(-label,se,z) %>%  filter(op == '~')
+```
+
+
+
+```{r}
+
+fit.po02null.est  <-standardizedSolution(fit.po02null)
+fit.po02null.est %>% 
+  filter(abs(est.std) < 0.3) %>% 
+  select(-z,-se) %>% 
+  arrange(abs(est.std)) %>% 
+  # Just the loadings
+  filter(op != '~1')
+
+```
+
+
+
+```{r}
+
+labelsforplotting <- c(
+  #"psycown" = "Psychological ownership",
+  "selfid"  = "Self-identity",
+  "intention" = "Intention",
+  "blooddonor " = "Blood donation history"
+)
+
+lavaanPlot(
+  model=fit.po02null,  
+  coefs = TRUE,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  labels = labelsforplotting,
+
+  #In simulated data there should be correlations inside
+  # bloodonor, psycown, selfid
+  # and between
+  # bloodonor, psycown
+  # and nothing else
+  sig = 0.001
+  # if sig is < 0.001 one gets significant correlations
+  # also from simulated data elsewhere suggesting that 0.05 is not enough
+  
+  )
+```
+
+```{r}
+# Same with standardised coefficients
+lavaanPlot(
+  model = fit.po02null, 
+   labels = labelsforplotting,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  coefs = TRUE, 
+  stand = TRUE,
+  sig=0.001
+  )
+```
+
+
+
+### SEM
 
 ```{r}
 #https://stats.stackexchange.com/questions/340857/serial-mediation-in-r-how-to-setup-the-model
@@ -716,12 +878,14 @@ po02.model <- '
 psycown =~ po01 + po02 + po03
 selfid =~ si01 + si02 + si03
 intention =~ it01 + it02 + it03
-#psycown_cont =~ ac01 + ac02 + ac03 + ac04
-#psycown_know =~ ai01 + ai02 + ai03 + ai04 
+#psycown_cont =~ ac01 + ac02 + ac03 + ac04 # these were not used in Edwards23
+#psycown_know =~ ai01 + ai02 + ai03 + ai04 # these were not used in Edwards23
 blooddonor =~ bd02 + bd01 + bd03 +bd04 # do we want to include the DATE OF LAST DONATION?
+
 #mediation
 psycown ~ a1 *  blooddonor
 selfid ~ a2 * blooddonor + d21 * psycown
+
 #regression
 intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
 ind_eff := a1* d21 * b2
@@ -735,7 +899,7 @@ cat(po02.model)
 ```{r}
 
 
-if (!workingexample) {
+if (fitmodels) {
 #fit
 #https://web.pdx.edu/~newsomj/semclass/ho_categorical.pdf
 # "There seems to be growing consensus among researchers that the best approach to analysis of
@@ -773,8 +937,7 @@ fit.po02 <- sem(po02.model,
 #"lavaan 0.6-19 did NOT end normally after nn iterations"
 #and sometimes
 #"lavaan 0.6-19 ended normally after nn iterations"
-#You need to have enough data n~1000?
-# 
+models[["fit.po02"]] <- fit.po02
 }
 
 lavaan::summary(fit.po02,standardized = TRUE)
@@ -847,7 +1010,7 @@ lavaanPlot(
   sig = 0.001
   # if sig is < 0.001 one gets significant correlations
   # also from simulated data elsewhere suggesting that 0.05 is not enough
-  # BAYESIN AND/OR BOOTSTRAP SHOULD BE MADE TO WORK
+  
   )
 ```
 
@@ -865,22 +1028,70 @@ lavaanPlot(
 ```
 
 
-### SEM with bootstrapping
+
+### Null SEM with bootstrapping
 
 ```{r}
+nBoots <- 1000            
 
-
+if (fitmodels) {
 #fit
 
 # https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q good example code
 
-nBoots <- 1000            
+fit.po03null <- sem(po02null.model,  
+                    estimator = "ML", # bootstrapping does not work with estimators designed for factors
+                    data = data.fit2, # data that is completely numeric
+                bootstrap = nBoots,
+                se = "boot"
+                )
+models[['fit.po03null']] <- fit.po03null
+}
+
+lavaan::summary(fit.po03null,standardized = TRUE)
+
+```
+
+
+
+```{r}
+lavaanPlot(
+  model = fit.po03null, 
+   labels = labelsforplotting,
+  node_options = list(shape = "box", fontname = "Helvetica"), 
+  edge_options = list(color = "grey"), 
+  coefs = TRUE, 
+  stand = TRUE,
+  sig=0.001
+  )
+
+
+```
+
+```{r}
+fit.po03null.best <- parameterEstimates(fit.po03null)
+fit.po03null.best %>% select(-se,-z) %>% filter(op == "~")
+```
+
+
+
+### SEM with bootstrapping
+
+```{r}
+
+if (fitmodels) {
+#fit
+
+# https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q good example code
+
 fit.po03 <- sem(po02.model,  
                     estimator = "ML", # bootstrapping does not work with estimators designed for factors
                     data = data.fit2, # data that is completely numeric
                 bootstrap = nBoots,
                 se = "boot"
                 )
+models[['fit.po03']] <- fit.po03
+}
 
 lavaan::summary(fit.po03,standardized = TRUE)
 
@@ -908,23 +1119,15 @@ fit.po03.best %>% select(-se,-z) %>% filter(op == "~")
 ```
 
 
-```{r}
-#Compare estimates
-
-
-```
-
-
-
-## Compare bootstrapped to original
+## Compare models
 
 
 ```{r}
 data.forest  <- fit.po03.best %>% 
-  mutate(estmet = "Bootstrapped") %>%  
+  mutate(estmet = "Hypothesis bootstrapped") %>%  
   filter(op == "~") %>% 
   bind_rows(
-    fit.po02.est %>% mutate(estmet = "Original") %>% 
+    fit.po02.est %>% mutate(estmet = "Hypothesis") %>% 
       rename(est=est.std) %>% 
       filter(op == "~") 
   ) %>% 
@@ -933,7 +1136,23 @@ data.forest  <- fit.po03.best %>%
     ) %>% 
   arrange(estmet, term)
 
-pos <- position_nudge(y=as.numeric(as.factor(data.forest$estmet))/5 -0.1) 
+data.forest  <- fit.po03null.best %>% 
+  mutate(estmet = "Null bootstrapped") %>%  
+  filter(op == "~") %>% 
+  bind_rows(
+    fit.po02null.est %>% mutate(estmet = "Null") %>% 
+      rename(est=est.std) %>% 
+      filter(op == "~") 
+  ) %>% 
+  mutate(
+    term = str_c(label,":",lhs,op,rhs)
+    ) %>% 
+  arrange(estmet, term) %>% 
+  bind_rows(data.forest)
+
+
+
+pos <- position_nudge(y=as.numeric(as.factor(data.forest$estmet))/5 -0.5) 
 
 data.forest %>% 
   mutate(
@@ -950,91 +1169,34 @@ data.forest %>%
 
 ```
 
-
-How do we choose which to report? WE SHOULD DECIDE THIS BEFOREHAND!
-
-
-## Improvements for SEM 
-
-### How do the residuals look ?
-
-```{r}
-#plot correlations from SEm
-lavaan::inspect(fit.po02,"est")$gamma
-
-```
-
-
-```{r}
-#residual correlation matrix i.e. how much correlation between 2 items is not captured by the model
-corrplot(resid(fit.po02,type="cor")$res.cov)
-```
-
-### Whats is suggested by modification indices ?
-
-```{r}
-mod_ind <- modificationindices(
-  fit.po02,
-  alpha = 0.001
-  )
-mod_ind <- mod_ind %>% arrange(desc(mi)) %>% filter(mi>10)
-mod_ind
-```
-
-
-Even with this random data you get a lot. Does it make any sense to use them? How to set the cut-offs?
-
-WE SHOULD DECIDE ABOUT THIS BEFOREHAND
-
-
-### Implement them
-
-```{r}
-
-po02.model.mi <- paste(
-  po02.model,
-  str_c(mod_ind$lhs," ", mod_ind$op," ",mod_ind$rhs,collapse = "\n")
-)
-cat(po02.model.mi)
-```
-
-
-```{r}
-#fit
-                
-fit.po02.mi <- sem(po02.model.mi,  
-                    estimator = "WLSMV",
-                    data = data.fit
-                #SHOULD SOME OTHER PARAMETERS BE SET?
-)
-
-lavaan::summary(fit.po02,standardized = TRUE)
-
-
-```
-
-```{r}
-# Same with standardised coefficients
-lavaanPlot(
-  model = fit.po02.mi, 
-   labels = labelsforplotting,
-  node_options = list(shape = "box", fontname = "Helvetica"), 
-  edge_options = list(color = "grey"), 
-  coefs = TRUE, 
-  stand = TRUE,
-  sig=0.001
-  )
-```
-
-
 ```{r}
 
 round(
-  sapply(list(sem.ori=fit.po02,sem.mi=fit.po02.mi),
-         function(x) fitmeasures(x,c("npar","chisq","df","cfi","rmsea","srmr","aic"))
+  sapply(list(Null=fit.po02null,NullBoot=fit.po03null,Hypo=fit.po02,HypoBoot=fit.po03 ),
+         function(x) fitmeasures(x,c("chisq","df","cfi","rmsea","srmr"))
          )
 ,3)
 
+```
 
+According to https://easystats.github.io/effectsize/reference/interpret_gfi.html
+
+
+"For structural equation models (SEM), Kline (2015) suggests that at a minimum the following indices should be reported: The model chi-square, the RMSEA, the CFI and the SRMR."
+
+chisq, Chi-squared, larger is better
+
+cfi Comparative Fit Index, "It should be > .96" , higher is better
+
+rmsea Root Mean Square Error of Approximation, "should be < .08", smaller is better
+
+srmr Standardized Root Mean Square Residual, "Should be < .08", smaller is better
+
+
+
+```{r}
+if (fitmodels) {
+  save(models,file=here(str_replace(str_c("results/",datafile),"\\.data\\.",".models.")))
+}
 ```
 
