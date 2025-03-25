@@ -17,6 +17,8 @@ TODO:
 
 - should some other parameters be set to SEM fitting?
 
+ - https://stackoverflow.com/questions/79444918/why-am-i-getting-dimnamesx-dn-length-of-dimnames-2-not-equal-to-array semPaths does not work for other estimators
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(
@@ -33,7 +35,8 @@ library(corrplot)
 library(ggstats)
 library(lavaan)
 library(lavaanPlot)
-#library(blavaan) could get to work with this model
+library(semPlot)
+#library(blavaan) #could get to work with this model
 #library(manymome) # could have interesting other statistics to look at
 
 # https://github.com/cjvanlissa/worcs
@@ -246,16 +249,17 @@ qabbr <- c(
 #With the simulated data sem fitting with data containing factors is unstable, hence here is data and models from that fit.
 datafile <- "workingexample20250303.data.rdata"
 workingexample <- TRUE # TRUE for working with presimulated data
-fitmodels <- FALSE # FALSE for working with prefitted models
+fitmodels <- TRUE # FALSE for working with prefitted models
 if (workingexample) {
   load(file=here(str_c("results/",datafile)))
 }
 if (!fitmodels) {
   load(file=here(str_replace(str_c("results/",datafile),"\\.data\\.",".models.")))
+  fit.po02ss <- models$fit.po02ss
   fit.po02 <- models$fit.po02
-  fit.po02null <- models$fit.po02null
+  fit.po03ss <- models$fit.po03ss
   fit.po03 <- models$fit.po03
-  fit.po03null <- models$fit.po03null
+
 }
 
 
@@ -586,6 +590,19 @@ data.fit <- data %>%
         #"Your underweight variance seems to be much larger than other variances.  Try dividing it by 10 or 100 to make the SDs more similar across modeled variables." 
         # But this does not seem to necessarily help.
       )
+  ) %>% 
+  #Original paper used sum scores instead of CFA. Let's add them for comparison
+  mutate(
+    ss_psycown = as.numeric(po01) + as.numeric(po02) + as.numeric(po03),
+    ss_selfid = as.numeric(si01) + as.numeric(si02) + as.numeric(si03),
+    ss_intention = as.numeric(it01) + as.numeric(it02) + as.numeric(it03),
+    #donation history is on diffent scales, normalise them before summing.
+    #others should be positively correlated, but bd04 negatively
+    ss_blooddonor = scale(as.numeric(bd02)) 
+    + scale(as.numeric(bd01)) 
+    + scale(bd03)  
+    -scale(bd04) # do we want to include the DATE OF LAST DONATION?
+    
   )
 
 # To make bootstrapping run there cannot be any unordered factors
@@ -695,7 +712,7 @@ round(
 
 ## SEM
 
-### Null model for SEM
+### Sum score model
 
 ```{r}
 #https://stats.stackexchange.com/questions/340857/serial-mediation-in-r-how-to-setup-the-model
@@ -703,29 +720,18 @@ round(
 # N.B. you need to check that first item is positively correlated with your latent factor
 # Otherwise you get opposite direction 
 
-po02null.model <- ' 
-#measurement model
-#psycown =~ po01 + po02 + po03 #NO PSYCOWN
-selfid =~ si01 + si02 + si03
-intention =~ it01 + it02 + it03
-##psycown_cont =~ ac01 + ac02 + ac03 + ac04 # these were not used in Edwards23
-##psycown_know =~ ai01 + ai02 + ai03 + ai04 # these were not used in Edwards23  
-blooddonor =~ bd02 + bd01 + bd03 +bd04 # do we want to include the DATE OF LAST DONATION?
-
+po02ss.model <- ' 
 #mediation
-#psycown ~ a1 *  blooddonor #NO PSYCOWN 
-
-#selfid ~ a2 * blooddonor + d21 * psycown
-selfid ~ a2 * blooddonor # #NO PSYCOWN
+ss_psycown ~ a1 *  ss_blooddonor 
+ss_selfid ~ a2 * ss_blooddonor + d21 * ss_psycown
 
 #regression
-intention ~  de01 + de02 + ie01 +  cp * blooddonor  + b2 * selfid #NO PSYCOWN
-#intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
+ss_intention ~  de01 + de02 + ie01 +  cp * ss_blooddonor + b1 * ss_psycown + b2 * ss_selfid
 
-#ind_eff := a1* d21 * b2 #NO PSYCOWN
+ind_eff := a1* d21 * b2 
 '
 
-cat(po02null.model)
+cat(po02ss.model)
 
 ```
 
@@ -734,29 +740,19 @@ cat(po02null.model)
 
 
 if (fitmodels) {
-#fit
-#https://web.pdx.edu/~newsomj/semclass/ho_categorical.pdf
-# "There seems to be growing consensus among researchers that the best approach to analysis of
-# binary and ordinal variables (with few categories) is what is referred most to most commonly as diagonally
-# weighted least squares (DWLS) approach (Muthén, du Toit, & Spisic, 1997). This estimation method is
-# called weighted least squares mean and variance adjusted (WLSMV) in Mplus and the R package lavaan
-# (it is invoked by estimator = WLSMV). "
 
 #https://www.tandfonline.com/doi/full/10.1080/10705511.2021.1877548                
-fit.po02null <- sem(po02null.model,  
-                #default maximum likelihood (ML, MLR,..) methods don't work with categorials
-                 #estimator = "DWLS", # diagonally weighted least squares, often recomended
-                    estimator = "WLSMV", # robust diagonally weighted least squares stable and should work with ordered factors
-                #We select WLSMV as the estimator. Often it does not fit with the simulated data.
-                #It might work with real data and then we compare ML estimates from bootstrapped.
-                                 data = data.fit
+fit.po02ss <- sem(po02ss.model,  
+                    estimator = "MLR", # robust diagonally weighted least squares stable and should work with ordered factors
+                                 data = data.fit2,
                 
                 #SHOULD SOME OTHER PARAMETERS BE SET?
                 
                 #The sem function is a wrapper for the more general lavaan function, but setting the following default options:
                 # int.ov.free = TRUE, If FALSE, the intercepts of the observed variables are fixed to zero.
                 # int.lv.free = FALSE, If FALSE, the intercepts of the latent variables are fixed to zero.
-                # auto.fix.first = TRUE (unless std.lv = TRUE),  If TRUE, the factor loading of the first indicator is set to 1.0 for every latent variable.
+                auto.fix.first = FALSE, #  If TRUE, the factor loading of the first indicator is set to 1.0 for every latent variable. 
+                std.lv = TRUE, 
                 # auto.fix.single = TRUE, If TRUE, the residual variance (if included) of an observed indicator is set to zero if it is the only indicator of a latent variable.
                 # auto.var = TRUE, If TRUE, the (residual) variances of both observed and latent variables are set free.
                 # auto.cov.lv.x = TRUE, If TRUE, the covariances of exogenous latent variables are included in the model and set free.
@@ -773,15 +769,15 @@ fit.po02null <- sem(po02null.model,
 #"lavaan 0.6-19 ended normally after nn iterations"
 #You need to have enough data n~1000?
 #
-models[["fit.po02null"]] <- fit.po02null
+models[["fit.po02ss"]] <- fit.po02ss
 }
 
-lavaan::summary(fit.po02null,standardized = TRUE)
+lavaan::summary(fit.po02ss,standardized = TRUE)
 
 ```
 
 ```{r}
-varTable(fit.po02null)
+varTable(fit.po02ss)
 ```
 
 IS ie01 a problem? should it be numeric?
@@ -791,27 +787,27 @@ IS bd04 a problem? should we reduce its variation by scaling it down?
 
 ```{r}
 #inspect(fit,what="")
-lavaan::inspect(fit.po02null,"r2")
+lavaan::inspect(fit.po02ss,"r2")
 ```
 
 
 
 ```{r}
-lavaan::standardizedsolution(fit.po02null) %>% select(-label)
+lavaan::standardizedsolution(fit.po02ss) %>% select(-label)
 # Use standardizedSolution to obtain SEs and test statistics for standardized estimates. 
 
 ```
 
 ```{r}
-lavaan::standardizedsolution(fit.po02null) %>% select(-label,se,z) %>%  filter(op == '~')
+lavaan::standardizedsolution(fit.po02ss) %>% select(-label,se,z) %>%  filter(op == '~')
 ```
 
 
 
 ```{r}
 
-fit.po02null.est  <-standardizedSolution(fit.po02null)
-fit.po02null.est %>% 
+fit.po02ss.est  <-standardizedSolution(fit.po02ss)
+fit.po02ss.est %>% 
   filter(abs(est.std) < 0.3) %>% 
   select(-z,-se) %>% 
   arrange(abs(est.std)) %>% 
@@ -825,14 +821,14 @@ fit.po02null.est %>%
 ```{r}
 
 labelsforplottingnull <- c(
-  #"psycown" = "Psychological ownership",
-  "selfid"  = "Self-identity",
-  "intention" = "Intention",
-  "blooddonor " = "Blood donation history"
+  "ss_psycown" = "Psychological ownership",
+  "ss_selfid"  = "Self-identity",
+  "ss_intention" = "Intention",
+  "ss_blooddonor" = "Blood donation history"
 )
 
 lavaanPlot(
-  model=fit.po02null,  
+  model=fit.po02ss,  
   coefs = TRUE,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
@@ -853,7 +849,7 @@ lavaanPlot(
 ```{r}
 # Same with standardised coefficients
 lavaanPlot(
-  model = fit.po02null, 
+  model = fit.po02ss, 
    labels = labelsforplottingnull,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
@@ -863,6 +859,11 @@ lavaanPlot(
   )
 ```
 
+
+
+```{r}
+semPlot::semPaths(fit.po02ss)
+```
 
 
 ### SEM
@@ -900,29 +901,16 @@ cat(po02.model)
 
 
 if (fitmodels) {
-#fit
-#https://web.pdx.edu/~newsomj/semclass/ho_categorical.pdf
-# "There seems to be growing consensus among researchers that the best approach to analysis of
-# binary and ordinal variables (with few categories) is what is referred most to most commonly as diagonally
-# weighted least squares (DWLS) approach (Muthén, du Toit, & Spisic, 1997). This estimation method is
-# called weighted least squares mean and variance adjusted (WLSMV) in Mplus and the R package lavaan
-# (it is invoked by estimator = WLSMV). "
 
-#https://www.tandfonline.com/doi/full/10.1080/10705511.2021.1877548                
 fit.po02 <- sem(po02.model,  
-                #default maximum likelihood (ML, MLR,..) methods don't work with categorials
-                 #estimator = "DWLS", # diagonally weighted least squares, often recomended
-                    estimator = "WLSMV", # robust diagonally weighted least squares stable and should work with ordered factors
-                #We select WLSMV as the estimator. Often it does not fit with the simulated data.
-                #It might work with real data and then we compare ML estimates from bootstrapped.
-                                 data = data.fit
-                
-                #SHOULD SOME OTHER PARAMETERS BE SET?
-                
+                    estimator = "MLR", # robust diagonally weighted least squares stable and should work with ordered factors
+                                 data = data.fit2,
+
                 #The sem function is a wrapper for the more general lavaan function, but setting the following default options:
                 # int.ov.free = TRUE, If FALSE, the intercepts of the observed variables are fixed to zero.
                 # int.lv.free = FALSE, If FALSE, the intercepts of the latent variables are fixed to zero.
-                # auto.fix.first = TRUE (unless std.lv = TRUE),  If TRUE, the factor loading of the first indicator is set to 1.0 for every latent variable.
+                auto.fix.first = FALSE,
+                std.lv = TRUE 
                 # auto.fix.single = TRUE, If TRUE, the residual variance (if included) of an observed indicator is set to zero if it is the only indicator of a latent variable.
                 # auto.var = TRUE, If TRUE, the (residual) variances of both observed and latent variables are set free.
                 # auto.cov.lv.x = TRUE, If TRUE, the covariances of exogenous latent variables are included in the model and set free.
@@ -992,7 +980,7 @@ labelsforplotting <- c(
   "psycown" = "Psychological ownership",
   "selfid"  = "Self-identity",
   "intention" = "Intention",
-  "blooddonor " = "Blood donation history"
+  "blooddonor" = "Blood donation history"
 )
 
 lavaanPlot(
@@ -1029,7 +1017,7 @@ lavaanPlot(
 
 
 
-### Null SEM with bootstrapping
+### Sum score with bootstrapping
 
 ```{r}
 nBoots <- 1000            
@@ -1039,16 +1027,18 @@ if (fitmodels) {
 
 # https://groups.google.com/g/lavaan/c/A6KCjXAZl-Q good example code
 
-fit.po03null <- sem(po02null.model,  
+fit.po03ss <- sem(po02ss.model,  
                     estimator = "ML", # bootstrapping does not work with estimators designed for factors
                     data = data.fit2, # data that is completely numeric
                 bootstrap = nBoots,
-                se = "boot"
+                se = "boot",
+                auto.fix.first = FALSE,
+                std.lv = TRUE
                 )
-models[['fit.po03null']] <- fit.po03null
+models[['fit.po03ss']] <- fit.po03ss
 }
 
-lavaan::summary(fit.po03null,standardized = TRUE)
+lavaan::summary(fit.po03ss,standardized = TRUE)
 
 ```
 
@@ -1056,7 +1046,7 @@ lavaan::summary(fit.po03null,standardized = TRUE)
 
 ```{r}
 lavaanPlot(
-  model = fit.po03null, 
+  model = fit.po03ss, 
    labels = labelsforplottingnull,
   node_options = list(shape = "box", fontname = "Helvetica"), 
   edge_options = list(color = "grey"), 
@@ -1068,9 +1058,49 @@ lavaanPlot(
 
 ```
 
+
 ```{r}
-fit.po03null.best <- parameterEstimates(fit.po03null)
-fit.po03null.best %>% select(-se,-z) %>% filter(op == "~")
+plotfit  <- semPaths(
+  fit.po03ss)
+```
+
+
+```{r}
+# HERE
+# https://stackoverflow.com/questions/66610253/path-diagram-in-r
+
+plotfit  <- semPaths(
+  fit.po03ss,
+  DoNotPlot = T,
+  what ="std"
+  )
+
+#plotfit$Arguments$labels
+
+# plotfit <- semptools::change_node_label(
+#   plotfit,
+#   list(
+#     list(node = "slf",to="Self-\nidentity" ),
+#     list(node = "bld",to="Blood\ndonation\nhistory" ),
+#     list(node = "int",to="Intention" )
+#   ),
+#   label.cex = .60,
+#   label.scale=F
+# )
+# plot(plotfit)
+
+```
+
+```{r}
+#ggsave(plotfit,filename = "testplot.pdf")
+```
+
+
+
+
+```{r}
+fit.po03ss.best <- parameterEstimates(fit.po03ss)
+fit.po03ss.best %>% select(-se,-z) %>% filter(op == "~")
 ```
 
 
@@ -1088,7 +1118,9 @@ fit.po03 <- sem(po02.model,
                     estimator = "ML", # bootstrapping does not work with estimators designed for factors
                     data = data.fit2, # data that is completely numeric
                 bootstrap = nBoots,
-                se = "boot"
+                se = "boot",
+                auto.fix.first = FALSE,
+                std.lv = TRUE 
                 )
 models[['fit.po03']] <- fit.po03
 }
@@ -1118,16 +1150,72 @@ fit.po03.best <- parameterEstimates(fit.po03)
 fit.po03.best %>% select(-se,-z) %>% filter(op == "~")
 ```
 
+### SEM with Bayes
+
+
+```{r}
+po02b.model <- ' 
+#measurement model
+psycown =~ po01 + po02 + po03
+selfid =~ si01 + si02 + si03
+intention =~ it01 + it02 + it03
+blooddonor =~ bd02 + bd01 + bd03 +bd04 
+
+# #mediation
+ psycown ~ a1 *  blooddonor
+ selfid ~ a2 * blooddonor + d21 * psycown
+# 
+# #regression
+ intention ~  de01 + de02 + ie01 +  cp * blooddonor + b1 * psycown + b2 * selfid
+ind_eff := a1* d21 * b2
+'
+
+cat(po02.model)
+
+```
+
+
+```{r}
+# this does not
+# #blavaan
+# #tmp <- as.data.frame(data.fit2)
+# fit.po04 <- blavaan(po02b.model,  
+#         
+#         #data = data.fit2 %>% mutate(across(everything(),jitter)),
+#         data = data.fit2,
+#         auto.fix.first = FALSE,
+#         std.lv = TRUE
+# )
+
+```
+
+```{r}
+
+#This works!
+# data(HolzingerSwineford1939, package = "lavaan")
+# # The Holzinger and Swineford (1939) example
+# HS.model <- ' visual  =~ x1 + x2 + x3
+#               textual =~ x4 + x5 + x6
+#               speed   =~ x7 + x8 + x9 '
+# 
+# fit <- blavaan(HS.model, data = HolzingerSwineford1939,
+#                auto.var = TRUE, auto.fix.first = TRUE,
+#                auto.cov.lv.x = TRUE)
+# summary(fit)
+# coef(fit)
+
+```
+
 
 ## Compare models
 
 
 ```{r}
 data.forest  <- fit.po03.best %>% 
-  mutate(estmet = "Hypothesis bootstrapped") %>%  
+  mutate(estmet = "Factor analysis\nbootstrapped") %>%  
   filter(op == "~") %>% 
   bind_rows(
-    fit.po02.est %>% mutate(estmet = "Hypothesis") %>% 
+    fit.po02.est %>% mutate(estmet = "Factor analysis") %>% 
       rename(est=est.std) %>% 
       filter(op == "~") 
   ) %>% 
@@ -1136,11 +1224,11 @@ data.forest  <- fit.po03.best %>%
     ) %>% 
   arrange(estmet, term)
 
-data.forest  <- fit.po03null.best %>% 
-  mutate(estmet = "Null bootstrapped") %>%  
+data.forest  <- fit.po03ss.best %>% 
+  mutate(estmet = "Sum score\nbootstrapped") %>%  
   filter(op == "~") %>% 
   bind_rows(
-    fit.po02null.est %>% mutate(estmet = "Null") %>% 
+    fit.po02ss.est %>% mutate(estmet = "Sum score") %>% 
       rename(est=est.std) %>% 
       filter(op == "~") 
   ) %>% 
@@ -1148,7 +1236,16 @@ data.forest  <- fit.po03null.best %>%
     term = str_c(label,":",lhs,op,rhs)
     ) %>% 
   arrange(estmet, term) %>% 
-  bind_rows(data.forest)
+  bind_rows(data.forest) %>% 
+  mutate(
+    lhs =str_replace_all(lhs,"ss_",""),
+    rhs =str_replace_all(rhs,"ss_",""),
+    term =str_replace_all(term,"ss_",""),
+    estmet = as.factor(estmet),
+    hollow_group=factor(if_else(ci.lower<=0 & ci.upper>=0, NA_character_, as.character(estmet)),
+                             levels=levels(estmet))
+  )
+  
 
 
 
@@ -1161,7 +1258,7 @@ data.forest %>%
   ggplot(aes(est,xmin=ci.lower,xmax=ci.upper,y=term,fill=I(hollow_color),color=estmet))+
   geom_vline(xintercept=0,color="grey") +
   geom_linerange(position=pos)+
-  geom_point(shape=21,siz=3,position=pos)+
+  geom_point(shape=21,size=3,position=pos)+
   scale_fill_discrete(na.value=NA) + 
   labs(x="Standardised effect size",y="Relationship") +
   labs(color="Estimation\n method")
@@ -1169,10 +1266,131 @@ data.forest %>%
 
 ```
 
+
+```{r}
+#From https://github.com/FRCBS/anemia_and_hb_deferral_prediction/blob/5a960498883fcca439d5491aca3a593b3dffea86/src/create_anemia_and_deferral_article_results.Rmd
+
+geom_stripes <- function(df, Variable) {
+  geom_rect(data=make_stripes(df, Variable) %>% filter(stripe==1),
+            mapping=aes(ymax = as.numeric(Variable) + 0.5,
+                        ymin = as.numeric(Variable) - 0.5),
+            fill = "gray", xmin=-Inf, xmax=Inf, alpha = 0.5, show.legend = FALSE, colour=NA, inherit.aes = FALSE)
+}
+geom_stripes2 <- function(df, Variable) {
+  geom_rect(data=make_stripes(df, Variable) %>% filter(stripe==1),
+            mapping=aes(xmax = as.numeric(Variable) + 0.5,
+                        xmin = as.numeric(Variable) - 0.5),
+            fill = "gray", ymin=-Inf, ymax=Inf, alpha = 0.5, show.legend = FALSE, colour=NA, inherit.aes = FALSE)
+}
+# Function to to unify x axis ranges on each row.
+# Returns a list of scales that can be passed as a parameter to the ggh4x::facetted_pos_scales function,
+# to modify individual panels in a facetted plot
+unify_range_by_rows <- function(g) {
+  b <- ggplot_build(g)
+  L <- length(b$layout$panel_scales_x)
+  #cols <- 2  # Where is this information stored? Now I have to handcode the number of columns.
+  cols <- n_distinct(b$layout$layout$COL)  # Maybe like this?
+  rows <- L / cols
+  # Unify ranges of a single facet row
+  unify <- function(r2) {
+    left <- map_dbl(r2, function(x) x[[1]])  # Left ends of the ranges
+    right <- map_dbl(r2, function(x) x[[2]])  # Right ends of the ranges
+    u <- c(min(left), max(right))
+    u <- rep(list(u), length(left))  # Repeat the same range for each column
+    # Change this so that a list is returned
+    u
+  }
+  # Extract limits from each panel
+  L <- list()
+  for (i in seq(1, rows)) {
+    tmp <- b$layout$panel_scales_x
+    r <- tmp[seq((i-1)*cols + 1, i*cols)]
+    r2 <- map(r, function(x) x$range$range) # each item is numeric vector of length two
+    res <- unify(r2)
+    L <- append(L, res)
+  }
+  scales <- map(L, function(r) scale_x_continuous(limits = r))  # Turn list of ranges into a list of scales
+  scales
+}
+
+stat_stripes <- function(mapping = NULL, data = NULL, geom = "rect",
+                    position = "identity", na.rm = FALSE, show.legend = FALSE, 
+                    inherit.aes = FALSE, alpha = 0.5, fill="gray", row_sizes = NULL, #group=1,
+                    ...) {
+  layer(
+    stat = StatStripes, data = data, mapping = mapping, geom = geom, 
+    position = position, show.legend = show.legend, inherit.aes = inherit.aes,
+    check.aes=TRUE, check.param = TRUE,
+    params = list(row_sizes=row_sizes, alpha=alpha, fill=fill, group=1, 
+                  na.rm = na.rm, ...)
+  )
+}
+
+
+tmp <- data.forest %>% 
+  rename(
+    Estimate = est,
+    low = ci.lower,
+    high = ci.upper,
+    Pretty = estmet,
+    Color = estmet,
+    
+    
+  )
+
+
+# g <- tmp %>%
+#   ggplot(aes(x=Estimate, xmin=low, xmax=high, y=Pretty, color=Group, fill=hollow_group))+
+#   stat_stripes(aes(stripe=Pretty), #row_sizes=c(Bayes=21, Cox=14), 
+#                alpha=0.5, fill="lightgray") +
+#   #geom_stripes(coeffs, Pretty) +
+#   geom_vline(aes(xintercept=0), color="gray", size=1) +
+#   ggstance::geom_linerangeh(position=position_dodge(width=1))+#, size=0.2) +
+#   geom_point(#aes(), 
+#              #fill=NA, 
+#              shape=21,
+#              size=1.5,
+#              position=position_dodge(width=1))+
+#              #key_glyph=ggstance::draw_key_pointrangeh) +
+#   labs(x="Estimate", y="Standardized variables") +
+#   #labs(x="Hazard ratio", y="Standardized variables") +
+#   # facet_grid(#model ~ phenotype,
+#   #            rows = vars(model), cols = vars(phenotype),
+#   #            labeller = labeller(phenotype = pheno_names),
+#   #            scales = "free", space = "free", shrink=TRUE, drop=FALSE) +
+#   # scale_colour_manual(values = cohort_colors[mygroups],
+#   #                     labels = cohort_names[mygroups],
+#   #                     breaks = mygroups, na.value = NA, drop=FALSE) +
+#   # scale_fill_manual(guide="none",
+#   #                   values = cohort_colors[mygroups],
+#   #                     labels = cohort_names[mygroups], na.value = NA, drop=FALSE) +
+#   guides(color = guide_legend(override.aes = list(shape = 16))) +
+#   #scale_x_log10() +
+#   scale_y_discrete() +  # !!!!! This is important. Solves the problem with position_dodge2 and the order of rect and pointrange geoms !!!!!!
+#                          # Otherwise following error results: Error: Discrete value supplied to continuous scale
+#   theme(legend.position="bottom",    
+#         panel.grid.major.y = element_blank(),
+#         panel.grid.minor.y = element_blank())
+# 
+# # Same xlims in both facets
+# scales2 <- unify_range_by_rows(g)
+# gg <- g + ggh4x::facetted_pos_scales(scales2)
+# 
+# # if (save_figs) {
+# #   filename <- sprintf("%s/pdf/facet_forest.pdf", result_base)
+# #   ggsave(filename=filename, plot=gg, width = 180, height = 180, units="mm", dpi=300, scale=1.0, device="pdf")
+# # }
+# gg
+# 
+
+```
+
+
+
 ```{r}
 
 round(
-  sapply(list(Null=fit.po02null,NullBoot=fit.po03null,Hypo=fit.po02,HypoBoot=fit.po03 ),
+  sapply(list(SS=fit.po02ss,SSB=fit.po03ss,FA=fit.po02,FAB=fit.po03 ),
          function(x) fitmeasures(x,c("chisq","df","cfi","rmsea","srmr"))
          )
 ,3)
