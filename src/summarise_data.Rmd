@@ -1252,16 +1252,14 @@ data.forest  <- fit.po03ss.best %>%
 pos <- position_nudge(y=as.numeric(as.factor(data.forest$estmet))/5 -0.5) 
 
 data.forest %>% 
-  mutate(
-    hollow_color = ifelse(ci.lower < 0 & ci.upper > 0, NA, "black")
-  ) %>% 
-  ggplot(aes(est,xmin=ci.lower,xmax=ci.upper,y=term,fill=I(hollow_color),color=estmet))+
+  ggplot(aes(est,xmin=ci.lower,xmax=ci.upper,y=term,fill=hollow_group,color=estmet))+
   geom_vline(xintercept=0,color="grey") +
   geom_linerange(position=pos)+
   geom_point(shape=21,size=3,position=pos)+
-  scale_fill_discrete(na.value=NA) + 
+  scale_fill_discrete(na.value=NA, guide ="none") + 
   labs(x="Standardised effect size",y="Relationship") +
-  labs(color="Estimation\n method")
+  labs(color="Model") +
+  geom_stripped_rows(color=NA) + theme_classic() 
 
 
 ```
