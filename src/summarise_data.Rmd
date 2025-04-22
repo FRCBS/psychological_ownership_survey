@@ -608,6 +608,7 @@ isfactor <- data %>%  summarise(across(everything(), ~ is.factor(.x))) %>%  as.l
 data.fit <- data %>%
   #lavaan cannot deal with unordered factor with more then 2 levels
   filter(de01 == 'man' | de01 == "women") %>% 
+  filter(bd01 != 'no') %>% 
   mutate(
     across(isfactor, ~ fct_drop(.x)
     ) %>% 
