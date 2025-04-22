@@ -33,6 +33,7 @@ library(ggstats)
 library(lavaan)
 library(lavaanPlot)
 library(semPlot)
+library(naniar)
 #library(blavaan) #could get to work with this model
 #library(manymome) # could have interesting other statistics to look at
 
@@ -245,7 +246,7 @@ qabbr <- c(
 ```{r}
 #With the simulated data sem fitting with data containing factors is unstable, hence here is data and models from that fit.
 datafile <- "workingexample20250422.data.rdata"
-workingexample <- FALSE # TRUE for working with presimulated data
+workingexample <- TRUE # TRUE for working with presimulated data
 fitmodels <- TRUE # FALSE for working with prefitted models
 if (workingexample) {
   load(file=here(str_c("results/",datafile)))
@@ -329,11 +330,7 @@ generate_random_timestamps <- function(n,start_date=as.Date("2025-01-01"),  end_
 }
 
 # Example usage
-set.seed(123)  # For reproducibility
-random_timestamps <- generate_random_timestamps(10)
-print(random_timestamps)
 
-  
   data_likert_7<- get_responses(n = n,
                 K = 7,
                 mu = rep(1,nrow(R)),
@@ -407,8 +404,12 @@ print(random_timestamps)
     )
   
   
-  
-  
+  # 1 % Random missing data
+  pmissing <- 0.01
+  rn <- data %>% select(-dttma) %>% as.matrix() %>% length() * pmissing
+  data <- as.matrix(data)
+  data[sample(nrow(data): (nrow(data)*ncol(data)), length(data) * pmissing )] <- NA
+  data <- as_tibble(data)
   save(data, file=here(str_c("results/",datafile)))
   summary(data)
 } 
@@ -439,9 +440,14 @@ data <- data %>%
       qabbr[1:21]),
     ~ f1(.) 
     ) %>% 
-  mutate(bd04 = as.Date(bd04),
+  mutate(
+        dttma = as.POSIXct(dttma),
+        bd04 = as.Date(bd04),
          bd01 = factor(bd01, levels = c("no","unsure","yes"),ordered = TRUE),
          de01 = factor(de01),
+         de02 = as.numeric(de02),
+         bd03 = as.numeric(bd03),
+         bd02 = as.numeric(bd02),
          #Days between answering and last donation
          bd04 = as.numeric(as.Date(dttma) - bd04)
          )  
@@ -589,7 +595,8 @@ library(lavaan)
 ```
 
 
-## Confirmatory factor analysis
+## Format data for modelling
+
 
 ```{r}
 models <- list()
@@ -640,9 +647,67 @@ summary(data.fit)
 
 
 ```{r}
-corrplot(cor(data.fit2))
+corrplot(cor(data.fit2,use="pairwise.complete.obs"))
 ```
 
+
+## Missing data analysis
+
+Check proportion of missing in all variables
+
+```{r}
+gg_miss_var(
+  data.fit2
+  )
+```
+
+Check major combinations of missingmess.
+
+```{r}
+gg_miss_upset(data.fit2,nsets = 10,nintersects=40)
+```
+
+
+Check is missingness related to data accumulation.
+
+```{r}
+
+gg_miss_case_cumsum(
+  data.fit2 %>% arrange(dttma)
+) 
+
+
+```
+
+
+Check is missingness related to major endpoint of the study i.e. intention to donate blood.
+
+```{r}
+
+gg_miss_fct(
+  x = data.fit %>% select(-dttma,
+                          -de01,
+                          -de02,
+                          -bd02,
+                          -bd04,
+                          -ss_psycown,
+                          -ss_selfid,
+                          -ss_blooddonor), 
+  fct = ss_intention)
+
+```
+
+Carry out a crude overall test of missingness
+
+```{r}
+mcar_test(data.fit2 %>% select(-dttma))
+# p ≤ 0.05 -> Reject the null hypothesis-> Data is MAR (Missing at random) or MNAR (Missing not at random), meaning missingness follows a pattern.
+# But this assumes normally distributed data and does not prove that data is MCAR (Missing Completely at Random)
+```
+
+
+
+## Confirmatory factor analysis
 
 
 ```{r}
@@ -659,7 +724,7 @@ po01.model <- ' po =~ po01 + po02 + po03
                 
 fit.po01.cfa <- cfa(po01.model,  
                     estimator = "WLSMV", #
-                    
+                    missing = "listwise",
                     data = data.fit)
 fit.po01.cfa
 # Minimum function test statistic is chi^2
