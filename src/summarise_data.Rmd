@@ -13,9 +13,6 @@ output:
 
 TODO:
 
-- is the null model correct ?
-
-- should some other parameters be set to SEM fitting?
 
  - https://stackoverflow.com/questions/79444918/why-am-i-getting-dimnamesx-dn-length-of-dimnames-2-not-equal-to-array semPaths does not work for other estimators
 
@@ -247,8 +244,8 @@ qabbr <- c(
 
 ```{r}
 #With the simulated data sem fitting with data containing factors is unstable, hence here is data and models from that fit.
-datafile <- "workingexample20250303.data.rdata"
-workingexample <- TRUE # TRUE for working with presimulated data
+datafile <- "workingexample20250422.data.rdata"
+workingexample <- FALSE # TRUE for working with presimulated data
 fitmodels <- TRUE # FALSE for working with prefitted models
 if (workingexample) {
   load(file=here(str_c("results/",datafile)))
@@ -261,7 +258,7 @@ if (!fitmodels) {
   fit.po03 <- models$fit.po03
 
 }
-
+write.csv(data,file = "../results/simulated_data.csv")
 
 ```
 
@@ -317,6 +314,25 @@ if (!workingexample) { # if you have data you set this to false
 #simulate data with responsesR::get_responses
 if (!workingexample) {
 library(responsesR)
+
+#Code by Copilot  
+generate_random_timestamps <- function(n,start_date=as.Date("2025-01-01"),  end_date=as.Date("2025-12-31")) {
+  # Define the start and end times for daytime
+  start_time <- as.POSIXct("08:00:00", format="%H:%M:%S")
+  end_time <- as.POSIXct("18:00:00", format="%H:%M:%S")
+  # Generate random times within the daytime range
+  random_times <- start_time + runif(n, min=0, max=as.numeric(difftime(end_time, start_time, units="secs")))
+  random_dates <- start_date + sample(0:(as.numeric(difftime(end_date, start_date))), n, replace=TRUE)
+  # Combine random dates and times
+  random_timestamps <- as.POSIXct(paste(random_dates, format(random_times, "%H:%M:%S")))
+  return(random_timestamps)
+}
+
+# Example usage
+set.seed(123)  # For reproducibility
+random_timestamps <- generate_random_timestamps(10)
+print(random_timestamps)
+
   
   data_likert_7<- get_responses(n = n,
                 K = 7,
@@ -380,9 +396,14 @@ library(responsesR)
       # and count donation in last two years from it with some noise
       bd03 = round(ceiling(bd02 / 5) + rnorm(nrow(data),0,1)),
       bd03 = ifelse(bd03 < 1 ,1,bd03),
-      bd04 = sample(seq(as.Date('2022/01/01'), as.Date('2024/01/01'), by="day"), n, replace = TRUE),
+      bd04 = sample(seq(as.Date('2023/05/05'), as.Date('2025/04/30'), by="day"), n, replace = TRUE),
       de02 = ifelse(de02 < 18 ,18,de02),
-      de02 = ifelse(de02 > 70 ,70,de02)
+      de02 = ifelse(de02 > 70 ,70,de02),
+      #time of answering
+      dttma = generate_random_timestamps(n,start_date=as.Date("2025-05-05"),  end_date=as.Date("2025-05-18"))
+    ) %>% 
+    relocate(
+      dttma
     )
   
   
@@ -420,7 +441,9 @@ data <- data %>%
     ) %>% 
   mutate(bd04 = as.Date(bd04),
          bd01 = factor(bd01, levels = c("no","unsure","yes"),ordered = TRUE),
-         de01 = factor(de01)
+         de01 = factor(de01),
+         #Days between answering and last donation
+         bd04 = as.numeric(as.Date(dttma) - bd04)
          )  
 
 
@@ -441,22 +464,19 @@ summary(data)
 table1 <-
   tbl_summary(
     data %>% 
-      # mutate(
-      #   bd01 = as.character(bd01) # this did fix this need to think of something
-      # ) %>% 
       rename(
-      Gender =  de01,
-      Age = de02,
-      DonationEligibility = bd01,
-      DonationCount = bd02,
-      DonationCountLast2years = bd03,
-    ),
+        Gender =  de01,
+        Age = de02,
+        DonationEligibility = bd01,
+        DonationCount = bd02,
+        DonationCountLast2years = bd03,
+      ),
     include = c(
       Age,
       DonationEligibility,
       DonationCount,
       DonationCountLast2years
-      ),
+    ),
     by =  Gender
     
   ) %>%
@@ -586,7 +606,7 @@ data.fit <- data %>%
     ) %>% 
       mutate(
         bd04 = as.numeric(bd04), # lavaan cannot handle dates
-        bd04 = bd04 / 10^-(2 - str_length(as.numeric(max(bd04)))) # https://groups.google.com/g/lavaan/c/r7w-4HHg5R0 
+        #bd04 = bd04 / 10^-(2 - str_length(as.numeric(max(bd04)))) # https://groups.google.com/g/lavaan/c/r7w-4HHg5R0 
         #"Your underweight variance seems to be much larger than other variances.  Try dividing it by 10 or 100 to make the SDs more similar across modeled variables." 
         # But this does not seem to necessarily help.
       )
@@ -598,11 +618,11 @@ data.fit <- data %>%
     ss_intention = as.numeric(it01) + as.numeric(it02) + as.numeric(it03),
     #donation history is on diffent scales, normalise them before summing.
     #others should be positively correlated, but bd04 negatively
-    ss_blooddonor = scale(as.numeric(bd02)) 
+    ss_blooddonor = as.numeric(scale(as.numeric(bd02)) 
     + scale(as.numeric(bd01)) 
     + scale(bd03)  
     -scale(bd04) # do we want to include the DATE OF LAST DONATION?
-    
+    )
   )
 
 # To make bootstrapping run there cannot be any unordered factors
